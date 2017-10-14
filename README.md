@@ -4,9 +4,13 @@
 
 An utility library for facilitate the handling of Class, Field, Method and others elements of the Java Reflection API.
 
+## Documentation
+
+Read the [Javadoc here](https://infinityrefactoring.github.io/8R-Reflections/)
+
 ## Requirements for use
 
-* Java 8, or newer 
+* Java 8, or newer
 
 ## Using Reflections
 
