@@ -15,7 +15,8 @@
  ******************************************************************************/
 package com.infinityrefactoring.reflections;
 
-import static com.infinityrefactoring.reflections.ClassWrapper.getClassWrapper;
+import static com.infinityrefactoring.reflections.ClassWrapper.wrap;
+import static com.infinityrefactoring.reflections.Reflections.invokeMethod;
 import static java.lang.String.format;
 import static java.util.regex.Pattern.quote;
 
@@ -38,7 +39,7 @@ import java.util.Objects;
  *
  * @author Thomás Sousa Silva (ThomasSousa96)
  */
-public class MethodNode implements ExpressionNode {
+public class MethodNode extends ExpressionNode {
 
 	private static final String[] EMPTY_STRING_ARRAY = new String[0];
 	private static final Object[] EMPTY_OBJECT_ARRAY = new Object[0];
@@ -55,6 +56,7 @@ public class MethodNode implements ExpressionNode {
 	 * @throws IllegalArgumentException if the expression node is not an {@linkplain ExpressionNode#isMethod(String) method}
 	 */
 	MethodNode(String expressionNode) {
+		super(expressionNode);
 		if (!ExpressionNode.isMethod(expressionNode)) {
 			throw new IllegalArgumentException("This expression node is not a method.");
 		}
@@ -87,13 +89,22 @@ public class MethodNode implements ExpressionNode {
 	}
 
 	@Override
-	public String getName() {
-		return METHOD_NAME;
+	public Class<?> getStaticNodeClass(Class<?> c, Map<String, Object> args) {
+		return wrap(c).getCompatibleMethodWithValues(METHOD_NAME, getMethodArgs(args)).getReturnType();
 	}
 
 	@Override
-	public Class<?> getNodeClass(Object rootObj, Map<String, Object> args) {
-		return getClassWrapper(rootObj).getCompatibleMethodWithValues(METHOD_NAME, getMethodArgs(args)).getReturnType();
+	public Object getStaticValue(Class<?> c) {
+		if (METHOD_ARG_KEYS.length == 0) {
+			return getStaticValue(c, null);
+		}
+		throw new UnsupportedOperationException("This method require arguments.");
+	}
+
+	@Override
+	public Object getStaticValue(Class<?> c, Map<String, Object> args) {
+		Object[] methodArgs = getMethodArgs(args);
+		return Reflections.invokeStaticMethod(c, METHOD_NAME, methodArgs);
 	}
 
 	@Override
@@ -107,7 +118,7 @@ public class MethodNode implements ExpressionNode {
 	@Override
 	public Object getValue(Object obj, Map<String, Object> args) {
 		Object[] methodArgs = getMethodArgs(args);
-		return Reflections.invokeMethod(obj, METHOD_NAME, methodArgs);
+		return invokeMethod(obj, METHOD_NAME, methodArgs);
 	}
 
 	@Override
@@ -116,11 +127,19 @@ public class MethodNode implements ExpressionNode {
 	}
 
 	@Override
-	public void setValue(Object obj, Object value, Map<String, Object> args, InstanceFactory instanceFactory) {
+	public void setStaticValue(Class<?> c, Object newValue, Map<String, Object> args, InstanceFactory instanceFactory) {
 		if (SETTER_METHOD_NAME == null) {
 			throw new UnsupportedOperationException("Unknown setter method.");
 		}
-		getClassWrapper(obj).invokeMethod(obj, SETTER_METHOD_NAME, value);
+		wrap(c).invokeStaticMethod(SETTER_METHOD_NAME, newValue);
+	}
+
+	@Override
+	public void setValue(Object obj, Object newValue, Map<String, Object> args, InstanceFactory instanceFactory) {
+		if (SETTER_METHOD_NAME == null) {
+			throw new UnsupportedOperationException("Unknown setter method.");
+		}
+		wrap(obj).invokeMethod(obj, SETTER_METHOD_NAME, newValue);
 	}
 
 	@Override
@@ -137,7 +156,7 @@ public class MethodNode implements ExpressionNode {
 	private Object[] getMethodArgs(Map<String, Object> args) {
 		if (METHOD_ARG_KEYS.length == 0) {
 			return EMPTY_OBJECT_ARRAY;
-		} else if (((METHOD_ARG_KEYS.length > 0) && (args == null)) || args.isEmpty()) {
+		} else if ((METHOD_ARG_KEYS.length > 0) && ((args == null) || args.isEmpty())) {
 			throw new IllegalArgumentException("The arguments map is null or empty.");
 		}
 		Object[] values = new Object[METHOD_ARG_KEYS.length];

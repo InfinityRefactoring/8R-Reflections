@@ -40,6 +40,8 @@ import java.util.function.Predicate;
  * Wraps a java class for facilitate the handling of your members, using the Java Reflection API.
  *
  * @param <T> the wrapped class
+ * @see #wrap(Class)
+ * @see #wrap(Object)
  * @see Reflections
  * @see Predicates
  * @see PathExpression
@@ -91,38 +93,6 @@ public class ClassWrapper<T> {
 	 */
 	public static boolean acceptValues(Executable executable, Object... values) {
 		return accept(executable.getParameterTypes(), values);
-	}
-
-	/**
-	 * Returns a instance that wraps the given class.
-	 * Note: If this class already was wrapped then the cached instance that will be returned.
-	 *
-	 * @param c the class that will be wrapped.
-	 * @return the wrapper.
-	 * @throws IllegalArgumentException if the class is null.
-	 */
-	@SuppressWarnings("unchecked")
-	public static <T> ClassWrapper<T> getClassWrapper(Class<T> c) {
-		if (c == null) {
-			throw new IllegalArgumentException("The class cannot be null.");
-		}
-		return (ClassWrapper<T>) CLASS_WRAPPERS.computeIfAbsent(c, ClassWrapper::new);
-	}
-
-	/**
-	 * Returns a instance that wraps the class of the given object.
-	 * Note: If this class already was wrapped then the cached instance that will be returned.
-	 *
-	 * @param obj the object that will be used to get the class that will be wrapped
-	 * @return the wrapper.
-	 * @throws IllegalArgumentException if the object is null.
-	 */
-	@SuppressWarnings("unchecked")
-	public static <T> ClassWrapper<T> getClassWrapper(T obj) {
-		if (obj == null) {
-			throw new IllegalArgumentException("The obj cannot be null.");
-		}
-		return (ClassWrapper<T>) getClassWrapper(obj.getClass());
 	}
 
 	/**
@@ -289,6 +259,40 @@ public class ClassWrapper<T> {
 	}
 
 	/**
+	 * Returns a instance that wraps the given class.
+	 * Note: If this class already was wrapped then the cached instance that will be returned.
+	 *
+	 * @param c the class that will be wrapped.
+	 * @return the wrapper.
+	 * @throws IllegalArgumentException if the class is null.
+	 * @see #wrap(Object)
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T> ClassWrapper<T> wrap(Class<T> c) {
+		if (c == null) {
+			throw new IllegalArgumentException("The class cannot be null.");
+		}
+		return (ClassWrapper<T>) CLASS_WRAPPERS.computeIfAbsent(c, ClassWrapper::new);
+	}
+
+	/**
+	 * Returns a instance that wraps the class of the given object.
+	 * Note: If this class already was wrapped then the cached instance that will be returned.
+	 *
+	 * @param obj the object that will be used to get the class that will be wrapped
+	 * @return the wrapper.
+	 * @throws IllegalArgumentException if the object is null.
+	 * @see #wrap(Class)
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T> ClassWrapper<T> wrap(T obj) {
+		if (obj == null) {
+			throw new IllegalArgumentException("The obj cannot be null.");
+		}
+		return (ClassWrapper<T>) wrap(obj.getClass());
+	}
+
+	/**
 	 * Returns true if the given method accepts the given types or values.
 	 *
 	 * @param parameterTypes the desired parameter types
@@ -367,10 +371,10 @@ public class ClassWrapper<T> {
 
 		Set<ClassWrapper<? super T>> set = new HashSet<>(total);
 		if (superclass != null) {
-			set.add((ClassWrapper<? super T>) getClassWrapper(superclass));
+			set.add((ClassWrapper<? super T>) wrap(superclass));
 		}
 		for (Class<?> i : interfaces) {
-			set.add((ClassWrapper<? super T>) getClassWrapper(i));
+			set.add((ClassWrapper<? super T>) wrap(i));
 		}
 		return set;
 	}

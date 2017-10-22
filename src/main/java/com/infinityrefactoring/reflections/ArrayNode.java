@@ -15,11 +15,8 @@
  ******************************************************************************/
 package com.infinityrefactoring.reflections;
 
-import static java.lang.String.format;
-
 import java.lang.reflect.Array;
 import java.util.Map;
-import java.util.Objects;
 
 /**
  * Represents an {@linkplain ExpressionNode#isArray(String) array node} of a {@linkplain PathExpression path expression}.
@@ -36,10 +33,10 @@ import java.util.Objects;
  *
  * @author Thomás Sousa Silva (ThomasSousa96)
  */
-public class ArrayNode implements ExpressionNode {
+public class ArrayNode extends ExpressionNode {
 
-	private final ExpressionNode INTERNAL_NODE;
 	private final int INDEX;
+	private final ExpressionNode INTERNAL_NODE;
 
 	/**
 	 * Constructs a new instance of ArrayNode.
@@ -48,45 +45,59 @@ public class ArrayNode implements ExpressionNode {
 	 * @throws IllegalArgumentException if the expression node is not an {@linkplain ExpressionNode#isArray(String) array}
 	 */
 	ArrayNode(String expressionNode) {
+		super(expressionNode);
 		if (!ExpressionNode.isArray(expressionNode)) {
 			throw new IllegalArgumentException("This expression node is not an array.");
 		}
 		int leftSquareBrackets = expressionNode.lastIndexOf('[');
 		INDEX = Integer.parseInt(expressionNode.substring((leftSquareBrackets + 1), expressionNode.lastIndexOf(']')).trim());
-		INTERNAL_NODE = ExpressionNode.compile(expressionNode.substring(0, leftSquareBrackets));
+		String internalExpressionNode = expressionNode.substring(0, leftSquareBrackets);
+		INTERNAL_NODE = (internalExpressionNode.isEmpty() ? null : ExpressionNode.compile(internalExpressionNode));
 	}
 
 	@Override
 	public boolean equals(Object obj) {
-		if (obj instanceof ArrayNode) {
-			ArrayNode expression = ((ArrayNode) obj);
-			return ((INDEX == expression.INDEX) && Objects.equals(INTERNAL_NODE, expression.INTERNAL_NODE));
-		}
-		return false;
+		return ((obj instanceof ArrayNode) && NAME.equals(((ArrayNode) obj).NAME));
 	}
 
 	@Override
-	public String getName() {
-		return ((INTERNAL_NODE == null) ? format("[%d]", INDEX) : INTERNAL_NODE.getName());
-	}
-
-	@Override
-	public Class<?> getNodeClass(Object rootObj, Map<String, Object> args) {
+	public Class<?> getStaticNodeClass(Class<?> c, Map<String, Object> args) {
 		if (INTERNAL_NODE != null) {
-			return INTERNAL_NODE.getNodeClass(rootObj, args).getComponentType();
+			return INTERNAL_NODE.getStaticNodeClass(c, args).getComponentType();
 		}
-		return rootObj.getClass();
+		return c.getComponentType();
+	}
+
+	@Override
+	public Object getStaticValue(Class<?> c, Map<String, Object> args) {
+		Object array = ((INTERNAL_NODE == null) ? null : INTERNAL_NODE.getStaticValue(c, args));
+		return ((array == null) ? null : Array.get(array, INDEX));
 	}
 
 	@Override
 	public Object getValue(Object obj, Map<String, Object> args) {
 		Object array = ((INTERNAL_NODE == null) ? obj : INTERNAL_NODE.getValue(obj, args));
-		return Array.get(array, INDEX);
+		return ((array == null) ? null : Array.get(array, INDEX));
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(INDEX, INTERNAL_NODE);
+		return NAME.hashCode();
+	}
+
+	@Override
+	public void setStaticValue(Class<?> c, Object newValue, Map<String, Object> args, InstanceFactory instanceFactory) {
+		if (INTERNAL_NODE != null) {
+			Object array = INTERNAL_NODE.getStaticValue(c, args);
+			if (array == null) {
+				Class<?> nodeClass = INTERNAL_NODE.getStaticNodeClass(c, args);
+				array = instanceFactory.getInstance(nodeClass, args);
+				INTERNAL_NODE.setStaticValue(c, array, args);
+			}
+			if (array != null) {
+				Array.set(array, INDEX, newValue);
+			}
+		}
 	}
 
 	@Override
@@ -100,7 +111,9 @@ public class ArrayNode implements ExpressionNode {
 				INTERNAL_NODE.setValue(obj, array, args);
 			}
 		}
-		Array.set(array, INDEX, value);
+		if (array != null) {
+			Array.set(array, INDEX, value);
+		}
 	}
 
 	@Override

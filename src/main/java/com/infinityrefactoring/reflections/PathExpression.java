@@ -16,13 +16,17 @@
 package com.infinityrefactoring.reflections;
 
 import static com.infinityrefactoring.reflections.InstanceFactory.DEFAULT_FACTORY;
+import static java.lang.String.format;
 import static java.util.Collections.unmodifiableList;
 import static java.util.regex.Pattern.quote;
 import static java.util.stream.Collectors.toList;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
+import java.util.Spliterator;
 import java.util.stream.Stream;
 
 /**
@@ -42,13 +46,13 @@ import java.util.stream.Stream;
  * @see ClassWrapper
  * @author Thomás Sousa Silva (ThomasSousa96)
  */
-public class PathExpression {
+public class PathExpression implements Iterable<ExpressionNode> {
 
 	/**
 	 * The default regex pattern for the literal String ".", that is used to split the nodes of a given path expression.
 	 */
 	public static final String DOT_REGEX = quote(".");
-	private static final Map<String, PathExpression> PATH_EXPRESSIONS = new HashMap<>();
+	private static final Map<String, PathExpression> PATH_EXPRESSIONS = new HashMap<>(50);
 	private final String PATH_EXPRESSION;
 	private final List<ExpressionNode> NODES;
 	private int LAST_INDEX;
@@ -66,6 +70,16 @@ public class PathExpression {
 			throw new IllegalArgumentException("The path expression cannot be null or empty.");
 		}
 		return PATH_EXPRESSIONS.computeIfAbsent(pathExpression, PathExpression::new);
+	}
+
+	private static Object getNextObj(Class<?> c, ExpressionNode node, Map<String, Object> args, InstanceFactory instanceFactory, boolean isNecessaryAnInstance) {
+		Object nextObj = node.getStaticValue(c, args);
+		if ((nextObj == null) && (instanceFactory != null) && isNecessaryAnInstance) {
+			Class<?> nodeClass = node.getStaticNodeClass(c, args);
+			nextObj = instanceFactory.getInstance(nodeClass, args);
+			node.setStaticValue(c, nextObj, args);
+		}
+		return nextObj;
 	}
 
 	/**
@@ -110,6 +124,16 @@ public class PathExpression {
 	}
 
 	/**
+	 * Returns the first node.
+	 *
+	 * @return the first node.
+	 * @see #getLastNode()
+	 */
+	public ExpressionNode getFirstNode() {
+		return NODES.get(0);
+	}
+
+	/**
 	 * Returns the expression value for the given root object.
 	 *
 	 * @param rootObj the instance that will have the node value extracted
@@ -118,6 +142,7 @@ public class PathExpression {
 	 * @see #getExpressionValue(Object, InstanceFactory)
 	 * @see #getExpressionValue(Object, Map, InstanceFactory)
 	 * @see #setExpressionValue(Object, Object)
+	 * @see #setStaticExpressionValue(Class, Object)
 	 */
 	public <R> R getExpressionValue(Object rootObj) {
 		return getExpressionValue(rootObj, null, null);
@@ -134,6 +159,7 @@ public class PathExpression {
 	 * @see #getExpressionValue(Object, Map, InstanceFactory)
 	 * @see #setExpressionValue(Object, Object, InstanceFactory)
 	 * @see InstanceFactory#DEFAULT_FACTORY
+	 * @see #setStaticExpressionValue(Class, Object, InstanceFactory)
 	 */
 	public <R> R getExpressionValue(Object rootObj, InstanceFactory instanceFactory) {
 		return getExpressionValue(rootObj, null, instanceFactory);
@@ -149,6 +175,7 @@ public class PathExpression {
 	 * @see #getExpressionValue(Object, InstanceFactory)
 	 * @see #getExpressionValue(Object, Map, InstanceFactory)
 	 * @see #setExpressionValue(Object, Object, Map)
+	 * @see #setStaticExpressionValue(Class, Object, Map)
 	 */
 	public <R> R getExpressionValue(Object rootObj, Map<String, Object> args) {
 		return getExpressionValue(rootObj, args, null);
@@ -166,23 +193,28 @@ public class PathExpression {
 	 * @see #getExpressionValue(Object, InstanceFactory)
 	 * @see #setExpressionValue(Object, Object, Map, InstanceFactory)
 	 * @see InstanceFactory#DEFAULT_FACTORY
+	 * @see #getStaticExpressionValue(Class, Map, InstanceFactory)
 	 */
-	@SuppressWarnings("unchecked")
 	public <R> R getExpressionValue(Object rootObj, Map<String, Object> args, InstanceFactory instanceFactory) {
-		if (rootObj == null) {
-			return null;
-		}
-		int index = 0;
-		Object nextObj = null;
-		for (ExpressionNode node : NODES) {
-			nextObj = getNextObj(rootObj, node, args, instanceFactory, (index < LAST_INDEX));
-			if (nextObj == null) {
-				return null;
-			}
-			rootObj = nextObj;
-			index++;
-		}
-		return (R) nextObj;
+		return getExpressionValue(rootObj, args, instanceFactory, false);
+	}
+
+	/**
+	 * Returns the expression nodes that is contained in this instance.
+	 *
+	 * @return the nodes.
+	 */
+	public List<ExpressionNode> getNodes() {
+		return NODES;
+	}
+
+	/**
+	 * Returns the nodes amount in this path expression.
+	 *
+	 * @return the amount.
+	 */
+	public int getNodesAmount() {
+		return NODES.size();
 	}
 
 	/**
@@ -194,9 +226,138 @@ public class PathExpression {
 		return PATH_EXPRESSION;
 	}
 
+	/**
+	 * Returns the expression value for the given class.
+	 *
+	 * @param c the class that will have the node value extracted
+	 * @return the expression value or null, if is not possible access the end of this expression or if this expression return void
+	 * @see #getStaticExpressionValue(Class, Map)
+	 * @see #getStaticExpressionValue(Class, InstanceFactory)
+	 * @see #getStaticExpressionValue(Class, Map, InstanceFactory)
+	 * @see #setStaticExpressionValue(Class, Object)
+	 * @see #getExpressionValue(Object)
+	 */
+	public <R> R getStaticExpressionValue(Class<?> c) {
+		return getStaticExpressionValue(c, null, null);
+	}
+
+	/**
+	 * Returns the expression value for the given class.
+	 *
+	 * @param c the class that will have the node value extracted
+	 * @param instanceFactory the factory the will be supplies instances if necessary (optional)
+	 * @return the expression value or null, if is not possible access the end of this expression or if this expression return void
+	 * @see #getStaticExpressionValue(Class)
+	 * @see #getStaticExpressionValue(Class, Map)
+	 * @see #getStaticExpressionValue(Class, Map, InstanceFactory)
+	 * @see #setStaticExpressionValue(Class, Object, InstanceFactory)
+	 * @see #getExpressionValue(Object, InstanceFactory)
+	 * @see InstanceFactory#DEFAULT_FACTORY
+	 */
+	public <R> R getStaticExpressionValue(Class<?> c, InstanceFactory instanceFactory) {
+		return getStaticExpressionValue(c, null, instanceFactory);
+	}
+
+	/**
+	 * Returns the expression value for the given class.
+	 *
+	 * @param c the class that will have the node value extracted
+	 * @param args the arguments that will be used to access this node (optional)
+	 * @return the expression value or null, if is not possible access the end of this expression or if this expression return void
+	 * @see #getStaticExpressionValue(Class)
+	 * @see #getStaticExpressionValue(Class, InstanceFactory)
+	 * @see #getStaticExpressionValue(Class, Map, InstanceFactory)
+	 * @see #setStaticExpressionValue(Class, Object, Map)
+	 * @see #getExpressionValue(Object, Map)
+	 */
+	public <R> R getStaticExpressionValue(Class<?> c, Map<String, Object> args) {
+		return getStaticExpressionValue(c, args, null);
+	}
+
+	/**
+	 * Returns the expression value for the given class.
+	 *
+	 * @param c the class that will have the node value extracted
+	 * @param args the arguments that will be used to access this node (optional)
+	 * @param instanceFactory the factory the will be supplies instances if necessary (optional)
+	 * @return the expression value or null, if is not possible access the end of this expression or if this expression return void
+	 * @see #getStaticExpressionValue(Class)
+	 * @see #getStaticExpressionValue(Class, Map)
+	 * @see #getStaticExpressionValue(Class, InstanceFactory)
+	 * @see #setStaticExpressionValue(Class, Object, Map, InstanceFactory)
+	 * @see #getExpressionValue(Object, Map, InstanceFactory)
+	 * @see InstanceFactory#DEFAULT_FACTORY
+	 */
+	public <R> R getStaticExpressionValue(Class<?> c, Map<String, Object> args, InstanceFactory instanceFactory) {
+		return getExpressionValue(c, args, instanceFactory, true);
+	}
+
 	@Override
 	public int hashCode() {
 		return PATH_EXPRESSION.hashCode();
+	}
+
+	@Override
+	public Iterator<ExpressionNode> iterator() {
+		return NODES.iterator();
+	}
+
+	/**
+	 * Returns the last node.
+	 *
+	 * @return the last node.
+	 * @see #getFirstNode()
+	 */
+	public ExpressionNode getLastNode() {
+		return NODES.get(NODES.size() - 1);
+	}
+
+	/**
+	 * Returns a list iterator over the nodes in this path (in proper sequence).
+	 *
+	 * @return a list iterator
+	 * @see #listIterator(int)
+	 */
+	public ListIterator<ExpressionNode> listIterator() {
+		return NODES.listIterator();
+	}
+
+	/**
+	 * Returns a list iterator over the nodes in this path (in proper sequence).
+	 *
+	 * @param index index of the first element to be returned from the
+	 *            list iterator (by a call to {@link ListIterator#next next})
+	 * @return a list iterator
+	 * @see #listIterator()
+	 */
+	public ListIterator<ExpressionNode> listIterator(int index) {
+		return NODES.listIterator(index);
+	}
+
+	/**
+	 * Returns another path expression instance with a nodes amount reduced.
+	 * Per example: "foo.bar".moveBackward(1) returns "foo".
+	 *
+	 * @param nodesAmount the end nodes amount that will be discarded
+	 * @return a another path expression
+	 * @see #moveForward(int)
+	 * @see #subPath(int, int)
+	 */
+	public PathExpression moveBackward(int nodesAmount) {
+		return subPath(0, (NODES.size() - nodesAmount));
+	}
+
+	/**
+	 * Returns another path expression instance with a nodes amount reduced.
+	 * Per example: "foo.bar".moveForward(1) returns "bar".
+	 *
+	 * @param nodesAmount the begin nodes amount that will be discarded.
+	 * @return a another path expression.
+	 * @see #moveBackward(int)
+	 * @see #subPath(int, int)
+	 */
+	public PathExpression moveForward(int nodesAmount) {
+		return subPath(nodesAmount, NODES.size());
 	}
 
 	/**
@@ -209,6 +370,7 @@ public class PathExpression {
 	 * @see #setExpressionValue(Object, Object, InstanceFactory)
 	 * @see #setExpressionValue(Object, Object, Map, InstanceFactory)
 	 * @see #getExpressionValue(Object)
+	 * @see #setStaticExpressionValue(Class, Object)
 	 * @see InstanceFactory#DEFAULT_FACTORY
 	 */
 	public void setExpressionValue(Object rootObj, Object newValue) {
@@ -225,6 +387,7 @@ public class PathExpression {
 	 * @see #setExpressionValue(Object, Object, Map)
 	 * @see #setExpressionValue(Object, Object, Map, InstanceFactory)
 	 * @see #getExpressionValue(Object, InstanceFactory)
+	 * @see #setStaticExpressionValue(Class, Object, InstanceFactory)
 	 * @see InstanceFactory#DEFAULT_FACTORY
 	 */
 	public void setExpressionValue(Object rootObj, Object newValue, InstanceFactory instanceFactory) {
@@ -242,6 +405,7 @@ public class PathExpression {
 	 * @see #setExpressionValue(Object, Object, InstanceFactory)
 	 * @see #setExpressionValue(Object, Object, Map, InstanceFactory)
 	 * @see #getExpressionValue(Object, Map)
+	 * @see #setStaticExpressionValue(Class, Object, Map)
 	 * @see InstanceFactory#DEFAULT_FACTORY
 	 */
 	public void setExpressionValue(Object rootObj, Object newValue, Map<String, Object> args) {
@@ -260,17 +424,195 @@ public class PathExpression {
 	 * @see #setExpressionValue(Object, Object, InstanceFactory)
 	 * @see #setExpressionValue(Object, Object, Map, InstanceFactory)
 	 * @see #getExpressionValue(Object, Map, InstanceFactory)
+	 * @see #setStaticExpressionValue(Class, Object, Map, InstanceFactory)
 	 * @see InstanceFactory#DEFAULT_FACTORY
 	 */
 	public void setExpressionValue(Object rootObj, Object newValue, Map<String, Object> args, InstanceFactory instanceFactory) {
+		setExpressionValue(rootObj, newValue, args, instanceFactory, false);
+	}
+
+	/**
+	 * Sets the expression value for the given class.
+	 * Note: This method uses the {@linkplain InstanceFactory#DEFAULT_FACTORY default factory} to supplies instances if necessary
+	 *
+	 * @param c the class that will have the node value setted
+	 * @param newValue the new expression value
+	 * @see #setStaticExpressionValue(Class, Object, Map)
+	 * @see #setStaticExpressionValue(Class, Object, InstanceFactory)
+	 * @see #setStaticExpressionValue(Class, Object, Map, InstanceFactory)
+	 * @see #getStaticExpressionValue(Class)
+	 * @see #setExpressionValue(Object, Object)
+	 * @see InstanceFactory#DEFAULT_FACTORY
+	 */
+	public void setStaticExpressionValue(Class<?> c, Object newValue) {
+		setStaticExpressionValue(c, newValue, null, DEFAULT_FACTORY);
+	}
+
+	/**
+	 * Sets the expression value for the given class.
+	 *
+	 * @param c the class that will have the node value setted
+	 * @param newValue the new expression value
+	 * @param instanceFactory the factory the will be supplies instances if necessary (optional)
+	 * @see #setStaticExpressionValue(Class, Object)
+	 * @see #setStaticExpressionValue(Class, Object, Map)
+	 * @see #setStaticExpressionValue(Class, Object, Map, InstanceFactory)
+	 * @see #getStaticExpressionValue(Class, InstanceFactory)
+	 * @see #setStaticExpressionValue(Class, Object, InstanceFactory)
+	 * @see #setExpressionValue(Object, Object, InstanceFactory)
+	 * @see InstanceFactory#DEFAULT_FACTORY
+	 */
+	public void setStaticExpressionValue(Class<?> c, Object newValue, InstanceFactory instanceFactory) {
+		setStaticExpressionValue(c, newValue, null, instanceFactory);
+	}
+
+	/**
+	 * Sets the expression value for the given class.
+	 * Note: This method uses the {@linkplain InstanceFactory#DEFAULT_FACTORY default factory} to supplies instances if necessary
+	 *
+	 * @param c the class that will have the node value setted
+	 * @param newValue the new expression value
+	 * @param args the arguments that will be used to access this node (optional)
+	 * @see #setStaticExpressionValue(Class, Object)
+	 * @see #setStaticExpressionValue(Class, Object, InstanceFactory)
+	 * @see #setStaticExpressionValue(Class, Object, Map, InstanceFactory)
+	 * @see #getStaticExpressionValue(Class, Map)
+	 * @see #setStaticExpressionValue(Class, Object, Map)
+	 * @see #setExpressionValue(Object, Object, Map)
+	 * @see InstanceFactory#DEFAULT_FACTORY
+	 */
+	public void setStaticExpressionValue(Class<?> c, Object newValue, Map<String, Object> args) {
+		setStaticExpressionValue(c, newValue, args, DEFAULT_FACTORY);
+	}
+
+	/**
+	 * Sets the expression value for the given class.
+	 *
+	 * @param c the class that will have the node value setted
+	 * @param newValue the new expression value
+	 * @param args the arguments that will be used to access this node (optional)
+	 * @param instanceFactory the factory the will be supplies instances if necessary (optional)
+	 * @see #setStaticExpressionValue(Class, Object)
+	 * @see #setStaticExpressionValue(Class, Object, Map)
+	 * @see #setStaticExpressionValue(Class, Object, InstanceFactory)
+	 * @see #setStaticExpressionValue(Class, Object, Map, InstanceFactory)
+	 * @see #getStaticExpressionValue(Class, Map, InstanceFactory)
+	 * @see #setStaticExpressionValue(Class, Object, Map, InstanceFactory)
+	 * @see #setExpressionValue(Object, Object, Map, InstanceFactory)
+	 * @see InstanceFactory#DEFAULT_FACTORY
+	 */
+	public void setStaticExpressionValue(Class<?> c, Object newValue, Map<String, Object> args, InstanceFactory instanceFactory) {
+		setExpressionValue(c, newValue, args, instanceFactory, true);
+	}
+
+	@Override
+	public Spliterator<ExpressionNode> spliterator() {
+		return NODES.spliterator();
+	}
+
+	/**
+	 * Returns a sequential Stream with the expression nodes of this instance.
+	 *
+	 * @return a stream
+	 */
+	public Stream<ExpressionNode> stream() {
+		return NODES.stream();
+	}
+
+	/**
+	 * Returns another path expression instance with a nodes amount reduced.
+	 * Per example: "foo.bar.name".subPath(1, 2) returns "bar".
+	 *
+	 * @param beginIndex the index of the begin node (inclusive)
+	 * @param endIndex the index of the end node (exclusive)
+	 * @return a another path expression
+	 * @throws IllegalArgumentException if the index range is invalid
+	 */
+	public PathExpression subPath(int beginIndex, int endIndex) {
+		if ((beginIndex == 0) && (endIndex == NODES.size())) {
+			return this;
+		} else if (beginIndex < 0) {
+			throw new IllegalArgumentException("The beginIndex must be greater than or equal zero.");
+		} else if (endIndex <= beginIndex) {
+			throw new IllegalArgumentException("The endIndex must be greater than beginIndex.");
+		} else if (endIndex > NODES.size()) {
+			throw new IllegalArgumentException(format("The endIndex must be less than or equal to %s.", NODES.size()));
+		} else if ((endIndex - beginIndex) == 1) {
+			return compile(NODES.get(beginIndex).getName());
+		}
+
+		StringBuilder builder = new StringBuilder();
+		for (int i = beginIndex; i < endIndex; i++) {
+			if (builder.length() > 0) {
+				builder.append('.');
+			}
+			builder.append(NODES.get(i).getName());
+		}
+		return compile(builder.toString());
+	}
+
+	@Override
+	public String toString() {
+		return PATH_EXPRESSION;
+	}
+
+	/**
+	 * Returns the expression value for the given root object.
+	 *
+	 * @param rootObj the instance that will have the node value extracted
+	 * @param args the arguments that will be used to access this node (optional)
+	 * @param instanceFactory the factory the will be supplies instances if necessary (optional)
+	 * @param staticExpressionValue use true to indicate that the begin of this path is static.
+	 * @return the expression value or null, if is not possible access the end of this expression or if this expression return void
+	 */
+	@SuppressWarnings("unchecked")
+	private <R> R getExpressionValue(Object rootObj, Map<String, Object> args, InstanceFactory instanceFactory, boolean staticExpressionValue) {
+		if (rootObj == null) {
+			return null;
+		}
+		int index = 0;
+		Object nextObj = null;
+		for (ExpressionNode node : NODES) {
+			if (staticExpressionValue && (index == 0)) {
+				nextObj = getNextObj((Class<?>) rootObj, node, args, instanceFactory, (index < LAST_INDEX));
+			} else {
+				nextObj = getNextObj(rootObj, node, args, instanceFactory, (index < LAST_INDEX));
+			}
+			if (nextObj == null) {
+				return null;
+			}
+			rootObj = nextObj;
+			index++;
+		}
+		return (R) nextObj;
+	}
+
+	/**
+	 * Sets the expression value for the given root object.
+	 *
+	 * @param c the class that will have the node value setted
+	 * @param newValue the new expression value
+	 * @param args the arguments that will be used to access this node (optional)
+	 * @param instanceFactory the factory the will be supplies instances if necessary (optional)
+	 * @param staticExpressionValue use true to indicate that the begin of this path is static.
+	 */
+	private void setExpressionValue(Object rootObj, Object newValue, Map<String, Object> args, InstanceFactory instanceFactory, boolean staticExpressionValue) {
 		if (rootObj != null) {
 			int index = 0;
 			Object nextObj = null;
 			for (ExpressionNode node : NODES) {
 				if (index == LAST_INDEX) {
-					node.setValue(rootObj, newValue, args);
+					if (staticExpressionValue && (index == 0)) {
+						node.setStaticValue((Class<?>) rootObj, newValue, args);
+					} else {
+						node.setValue(rootObj, newValue, args);
+					}
 				} else {
-					nextObj = getNextObj(rootObj, node, args, instanceFactory, true);
+					if (staticExpressionValue && (index == 0)) {
+						nextObj = getNextObj((Class<?>) rootObj, node, args, instanceFactory, true);
+					} else {
+						nextObj = getNextObj(rootObj, node, args, instanceFactory, true);
+					}
 					if (nextObj == null) {
 						break;
 					}
@@ -279,11 +621,6 @@ public class PathExpression {
 				}
 			}
 		}
-	}
-
-	@Override
-	public String toString() {
-		return "PathExpression [PATH_EXPRESSION=" + PATH_EXPRESSION + "]";
 	}
 
 }

@@ -24,7 +24,7 @@ Add this dependency in your pom.xml file:
 <dependency>
 	<groupId>com.infinityrefactoring</groupId>
 	<artifactId>8R-reflections</artifactId>
-	<version>1.0</version>
+	<version>1.5.0</version>
 </dependency>
 ```
 ## Use example:

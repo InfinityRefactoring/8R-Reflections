@@ -15,7 +15,7 @@
  ******************************************************************************/
 package com.infinityrefactoring.reflections;
 
-import static com.infinityrefactoring.reflections.ClassWrapper.getClassWrapper;
+import static com.infinityrefactoring.reflections.ClassWrapper.wrap;
 import static com.infinityrefactoring.reflections.InstanceFactory.DEFAULT_FACTORY;
 import static com.infinityrefactoring.reflections.PathExpression.compile;
 
@@ -95,10 +95,10 @@ public class Reflections {
 	 * @see #getStaticFieldValue(Class, String)
 	 * @see #setFieldValue(Object, String, Object)
 	 * @see ClassWrapper#getFieldValue(Object, String)
-	 * @see ClassWrapper#getClassWrapper(Object)
+	 * @see ClassWrapper#wrap(Object)
 	 */
 	public static <R> R getFieldValue(Object obj, String fieldName) {
-		return getClassWrapper(obj).getFieldValue(obj, fieldName);
+		return wrap(obj).getFieldValue(obj, fieldName);
 	}
 
 	/**
@@ -112,10 +112,10 @@ public class Reflections {
 	 * @see #getFieldValue(Object, String)
 	 * @see #setStaticFieldValue(Class, String, Object)
 	 * @see ClassWrapper#setStaticFieldValue(String, Object)
-	 * @see ClassWrapper#getClassWrapper(Object)
+	 * @see ClassWrapper#wrap(Object)
 	 */
 	public static <R> R getStaticFieldValue(Class<?> c, String fieldName) {
-		return getClassWrapper(c).getStaticFieldValue(fieldName);
+		return wrap(c).getStaticFieldValue(fieldName);
 	}
 
 	/**
@@ -129,10 +129,10 @@ public class Reflections {
 	 * @throws IllegalArgumentException if not found
 	 * @see #invokeStaticMethod(Class, String, Object...)
 	 * @see ClassWrapper#invokeMethod(Object, String, Object...)
-	 * @see ClassWrapper#getClassWrapper(Object)
+	 * @see ClassWrapper#wrap(Object)
 	 */
 	public static <R> R invokeMethod(Object obj, String methodName, Object... args) {
-		return getClassWrapper(obj).invokeMethod(obj, methodName, args);
+		return wrap(obj).invokeMethod(obj, methodName, args);
 	}
 
 	/**
@@ -146,10 +146,10 @@ public class Reflections {
 	 * @throws IllegalArgumentException if not found
 	 * @see #invokeMethod(Object, String, Object...)
 	 * @see ClassWrapper#invokeStaticMethod(String, Object...)
-	 * @see ClassWrapper#getClassWrapper(Object)
+	 * @see ClassWrapper#wrap(Object)
 	 */
 	public static <R> R invokeStaticMethod(Class<?> c, String methodName, Object... args) {
-		return getClassWrapper(c).invokeStaticMethod(methodName, args);
+		return wrap(c).invokeStaticMethod(methodName, args);
 	}
 
 	/**
@@ -160,10 +160,10 @@ public class Reflections {
 	 * @return the instance
 	 * @throws IllegalArgumentException if not found
 	 * @see ClassWrapper#newInstance(Object...)
-	 * @see ClassWrapper#getClassWrapper(Object)
+	 * @see ClassWrapper#wrap(Object)
 	 */
 	public static <T> T newInstance(Class<T> c, Object... args) {
-		return getClassWrapper(c).newInstance(args);
+		return wrap(c).newInstance(args);
 	}
 
 	/**
@@ -252,10 +252,10 @@ public class Reflections {
 	 * @see #setStaticFieldValue(Class, String, Object)
 	 * @see #getFieldValue(Object, String)
 	 * @see ClassWrapper#setFieldValue(Object, String, Object)
-	 * @see ClassWrapper#getClassWrapper(Object)
+	 * @see ClassWrapper#wrap(Object)
 	 */
 	public static void setFieldValue(Object obj, String fieldName, Object newValue) {
-		getClassWrapper(obj).setFieldValue(obj, fieldName, newValue);
+		wrap(obj).setFieldValue(obj, fieldName, newValue);
 	}
 
 	/**
@@ -269,10 +269,10 @@ public class Reflections {
 	 * @see #setFieldValue(Object, String, Object)
 	 * @see #getStaticFieldValue(Class, String)
 	 * @see ClassWrapper#setStaticFieldValue(String, Object)
-	 * @see ClassWrapper#getClassWrapper(Object)
+	 * @see ClassWrapper#wrap(Object)
 	 */
 	public static void setStaticFieldValue(Class<?> c, String fieldName, Object newValue) {
-		getClassWrapper(c).setStaticFieldValue(fieldName, newValue);
+		wrap(c).setStaticFieldValue(fieldName, newValue);
 	}
 
 	private Reflections() {

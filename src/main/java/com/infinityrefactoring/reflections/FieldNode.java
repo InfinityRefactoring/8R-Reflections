@@ -15,10 +15,11 @@
  ******************************************************************************/
 package com.infinityrefactoring.reflections;
 
-import static com.infinityrefactoring.reflections.ClassWrapper.getClassWrapper;
+import static com.infinityrefactoring.reflections.ClassWrapper.wrap;
 import static com.infinityrefactoring.reflections.Reflections.getFieldValue;
+import static com.infinityrefactoring.reflections.Reflections.getStaticFieldValue;
 import static com.infinityrefactoring.reflections.Reflections.setFieldValue;
-import static java.util.Objects.requireNonNull;
+import static com.infinityrefactoring.reflections.Reflections.setStaticFieldValue;
 
 import java.util.Map;
 
@@ -36,9 +37,7 @@ import java.util.Map;
  *
  * @author Thomás Sousa Silva (ThomasSousa96)
  */
-public class FieldNode implements ExpressionNode {
-
-	private final String FIELD_NAME;
+public class FieldNode extends ExpressionNode {
 
 	/**
 	 * Constructs a new instance of FieldNode.
@@ -47,45 +46,50 @@ public class FieldNode implements ExpressionNode {
 	 * @throws IllegalArgumentException if the expression node is not an {@linkplain ExpressionNode#isField(String) field}
 	 */
 	FieldNode(String expressionNode) {
+		super(expressionNode);
 		if (!ExpressionNode.isField(expressionNode)) {
 			throw new IllegalArgumentException("This expression node is not a field.");
 		}
-		FIELD_NAME = requireNonNull(expressionNode);
 	}
 
 	@Override
 	public boolean equals(Object obj) {
-		return ((obj instanceof FieldNode) && (FIELD_NAME.equals(((FieldNode) obj).FIELD_NAME)));
+		return ((obj instanceof FieldNode) && (NAME.equals(((FieldNode) obj).NAME)));
 	}
 
 	@Override
-	public String getName() {
-		return FIELD_NAME;
+	public Class<?> getStaticNodeClass(Class<?> c, Map<String, Object> args) {
+		return wrap(c).getField(NAME).getType();
 	}
 
 	@Override
-	public Class<?> getNodeClass(Object rootObj, Map<String, Object> args) {
-		return getClassWrapper(rootObj).getField(FIELD_NAME).getType();
+	public Object getStaticValue(Class<?> c, Map<String, Object> args) {
+		return getStaticFieldValue(c, NAME);
 	}
 
 	@Override
 	public Object getValue(Object obj, Map<String, Object> args) {
-		return getFieldValue(obj, FIELD_NAME);
+		return getFieldValue(obj, NAME);
 	}
 
 	@Override
 	public int hashCode() {
-		return FIELD_NAME.hashCode();
+		return NAME.hashCode();
+	}
+
+	@Override
+	public void setStaticValue(Class<?> c, Object newValue, Map<String, Object> args, InstanceFactory instanceFactory) {
+		setStaticFieldValue(c, NAME, newValue);
 	}
 
 	@Override
 	public void setValue(Object obj, Object value, Map<String, Object> args, InstanceFactory instanceFactory) {
-		setFieldValue(obj, FIELD_NAME, value);
+		setFieldValue(obj, NAME, value);
 	}
 
 	@Override
 	public String toString() {
-		return "FieldNode [FIELD_NAME=" + FIELD_NAME + "]";
+		return "FieldNode [FIELD_NAME=" + NAME + "]";
 	}
 
 }
