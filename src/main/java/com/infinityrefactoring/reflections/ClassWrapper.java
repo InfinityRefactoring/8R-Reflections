@@ -27,6 +27,9 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -67,9 +70,13 @@ public class ClassWrapper<T> {
 	}
 
 	private final Class<T> CLASS;
+
 	private final Set<ClassWrapper<? super T>> SUPER_CLASS_WRAPPERS;
+
 	private final Set<Constructor<?>> CONSTRUCTORS;
+
 	private final Map<String, Field> FIELDS;
+
 	private final Map<String, Set<Method>> METHODS;
 
 	/**
@@ -112,6 +119,54 @@ public class ClassWrapper<T> {
 		} catch (IllegalArgumentException | IllegalAccessException ex) {
 			throw new IllegalArgumentException(ex);
 		}
+	}
+
+	/**
+	 * Returns the generic type of the given expected generic class and index defined on the return type.
+	 * 
+	 * @param method the method that contains the generic type
+	 * @param expectedGenericClass the generic class/interface that will be used as comparison
+	 * @param index the index of the generic type
+	 * @return the generic type
+	 */
+	public static Class<?> getGenericReturnType(Method method, Class<?> expectedGenericClass, int index) {
+		return getGenericType(method.getReturnType(), method.getGenericReturnType(), expectedGenericClass, index);
+	}
+
+	/**
+	 * Returns the generic type of the given expected generic class and index defined on the specified type.
+	 * 
+	 * @param c the class that contains the generic type
+	 * @param expectedGenericClass the generic class/interface that will be used as comparison
+	 * @param index the index of the generic type
+	 * @return the generic type
+	 */
+	public static Class<?> getGenericType(Class<?> c, Class<?> expectedGenericClass, int index) {
+		return getGenericType(c, c, expectedGenericClass, index);
+	}
+
+	/**
+	 * Returns the generic type of the given expected generic class and index defined on the specified field.
+	 * 
+	 * @param field the field that contains the generic type
+	 * @param expectedGenericClass the generic class/interface that will be used as comparison
+	 * @param index the index of the generic type
+	 * @return the generic type
+	 */
+	public static Class<?> getGenericType(Field field, Class<?> expectedGenericClass, int index) {
+		return getGenericType(field.getType(), field.getGenericType(), expectedGenericClass, index);
+	}
+
+	/**
+	 * Returns the generic type of the given expected generic class and index defined on the specified parameter.
+	 * 
+	 * @param parameter the parameter that contains the generic type
+	 * @param expectedGenericClass the generic class/interface that will be used as comparison
+	 * @param index the index of the generic type
+	 * @return the generic type
+	 */
+	public static Class<?> getGenericType(Parameter parameter, Class<?> expectedGenericClass, int index) {
+		return getGenericType(parameter.getType(), parameter.getParameterizedType(), expectedGenericClass, index);
 	}
 
 	/**
@@ -363,6 +418,59 @@ public class ClassWrapper<T> {
 			map.put(field.getName(), field);
 		}
 		return unmodifiableMap(map);
+	}
+
+	/**
+	 * Returns the generic type of the given expected generic class and index defined on the specified type..
+	 *
+	 * @param type the type that will have the generic value extracted
+	 * @param genericType the type that represents the generic type
+	 * @param expectedGenericClass the generic class/interface that will be used as comparison
+	 * @param index the index of the generic type
+	 * @return the generic type
+	 */
+	private static Class<?> getGenericType(Class<?> type, Type genericType, Class<?> expectedGenericClass, int index) {
+		if (!expectedGenericClass.isAssignableFrom(type)) {
+			throw new IllegalArgumentException(String.format("The [%s] type is not a sub type of [%s] class.", type.getName(), expectedGenericClass.getName()));
+		} else if (type == expectedGenericClass) {
+			return getGenericType(genericType, index);
+		} else if (expectedGenericClass.isInterface()) {
+			return getGenericType(type, type.getGenericInterfaces(), expectedGenericClass, index);
+		} else {
+			Class<?> superclass = type.getSuperclass();
+			if (superclass == expectedGenericClass) {
+				return getGenericType(type.getGenericSuperclass(), index);
+			}
+		}
+		throw new IllegalArgumentException("Unknown generic type.");
+	}
+
+	private static Class<?> getGenericType(Class<?> type, Type[] genericInterfaces, Class<?> expectedGenericClass, int index) {
+		if (genericInterfaces.length == 0) {
+			genericInterfaces = type.getSuperclass().getGenericInterfaces();
+		}
+		for (Type interfaceType : genericInterfaces) {
+			if (interfaceType instanceof ParameterizedType) {
+				Type rawType = ((ParameterizedType) interfaceType).getRawType();
+				if (rawType == expectedGenericClass) {
+					return getGenericType(interfaceType, index);
+				}
+			} else {
+				return getGenericType(type, ((Class<?>) interfaceType).getGenericInterfaces(), expectedGenericClass, index);
+			}
+		}
+		throw new IllegalArgumentException("Unknown generic type.");
+	}
+
+	/**
+	 * Returns the generic type of the given index.
+	 *
+	 * @param type the type that will have the generic value extracted
+	 * @param index the index of the generic type
+	 * @return the generic type
+	 */
+	private static Class<?> getGenericType(Type type, int index) {
+		return (Class<?>) ((ParameterizedType) type).getActualTypeArguments()[index];
 	}
 
 	/**

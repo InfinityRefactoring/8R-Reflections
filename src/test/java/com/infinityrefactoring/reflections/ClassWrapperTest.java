@@ -15,13 +15,17 @@
  ******************************************************************************/
 package com.infinityrefactoring.reflections;
 
+import static com.infinityrefactoring.reflections.ClassWrapper.getGenericReturnType;
+import static com.infinityrefactoring.reflections.ClassWrapper.getGenericType;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -69,6 +73,27 @@ public class ClassWrapperTest {
 		person.setName("foo");
 		String name = classWrapper.getFieldValue(person, "name");
 		assertSame(person.getName(), name);
+	}
+
+	@Test
+	public void testGetGenericType() throws Exception {
+		Field genericInterfaceField = ClassWrapper.wrap(Foo.class).getField("genericInterface");
+
+		assertEquals(Integer.class, getGenericType(genericInterfaceField, GenericInterface.class, 0));
+
+		ClassWrapper<Foo> classWrapper = ClassWrapper.wrap(Foo.class);
+		Field subGenericInterfaceField = classWrapper.getField("subGenericInterface");
+		assertEquals(Long.class, getGenericType(subGenericInterfaceField, GenericInterface.class, 0));
+
+		assertEquals(Long.class, getGenericType(Bar.class, GenericInterface.class, 0));
+
+		assertEquals(Boolean.class, getGenericType(Bar.class, GenericClass.class, 0));
+
+		Method method = classWrapper.getCompatibleMethodWithTypes("getBar", SubGenericInterface.class);
+		assertEquals(Long.class, getGenericReturnType(method, GenericInterface.class, 0));
+
+		Parameter parameter = method.getParameters()[0];
+		assertEquals(Long.class, getGenericType(parameter, GenericInterface.class, 0));
 	}
 
 	@Test
@@ -135,6 +160,37 @@ public class ClassWrapperTest {
 		assertSame(person.getClass(), Person.class);
 		assertSame(name, person.getName());
 		assertSame(addresses, person.getAddresses());
+	}
+
+	@SuppressWarnings("serial")
+	public static class Bar extends GenericClass<Boolean> implements SubGenericInterface {
+
+	}
+
+	public static class Foo implements GenericInterface<String> {
+
+		@SuppressWarnings("unused")
+		private GenericInterface<Integer> genericInterface;
+
+		@SuppressWarnings("unused")
+		private SubGenericInterface subGenericInterface;
+
+		public Bar getBar(SubGenericInterface g) {
+			return null;
+		}
+
+	}
+
+	public static abstract class GenericClass<T> {
+
+	}
+
+	public static interface GenericInterface<T> {
+
+	}
+
+	public static interface SubGenericInterface extends GenericInterface<Long>, Serializable {
+
 	}
 
 }
