@@ -15,9 +15,11 @@
  ******************************************************************************/
 package com.infinityrefactoring.reflections;
 
+import static com.infinityrefactoring.reflections.ClassWrapper.getMemberType;
 import static com.infinityrefactoring.reflections.InstanceFactory.DEFAULT_FACTORY;
 import static java.util.Collections.emptyList;
 
+import java.lang.reflect.Member;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -127,12 +129,33 @@ public abstract class ExpressionNode {
 
 	/**
 	 * Returns an ordered list with the keys of the argument map, that are required to invoke it.
-	 * 
+	 *
 	 * @return the keys
 	 */
 	public List<String> getArgumentKeys() {
 		return emptyList();
 	}
+
+	/**
+	 * Returns the member that this node represents on the given class.
+	 *
+	 * @param c the class that have this node
+	 * @return the member
+	 * @see #getMember(Class, Map)
+	 */
+	public Member getMember(Class<?> c) {
+		return getMember(c, null);
+	}
+
+	/**
+	 * Returns the member that this node represents on the given class.
+	 *
+	 * @param c the class that have this node
+	 * @param args the arguments that will be used to access this node.
+	 * @return the member
+	 * @see #getMember(Class)
+	 */
+	public abstract Member getMember(Class<?> c, Map<String, Object> args);
 
 	/**
 	 * Returns the node name.
@@ -168,7 +191,9 @@ public abstract class ExpressionNode {
 	 * @throws IllegalArgumentException if the root object is null
 	 * @see #getNodeClass(Object, Map)
 	 */
-	public abstract Class<?> getStaticNodeClass(Class<?> c, Map<String, Object> args);
+	public Class<?> getStaticNodeClass(Class<?> c, Map<String, Object> args) {
+		return getMemberType(getMember(c, args));
+	}
 
 	/**
 	 * Returns the node value.
@@ -241,7 +266,7 @@ public abstract class ExpressionNode {
 
 	/**
 	 * Returns true if this node require arguments to will be invoked.
-	 * 
+	 *
 	 * @return true if this node require arguments
 	 */
 	public boolean needArguments() {

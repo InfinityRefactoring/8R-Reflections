@@ -21,6 +21,8 @@ import static com.infinityrefactoring.reflections.Reflections.getStaticFieldValu
 import static com.infinityrefactoring.reflections.Reflections.setFieldValue;
 import static com.infinityrefactoring.reflections.Reflections.setStaticFieldValue;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Member;
 import java.util.Map;
 
 /**
@@ -57,9 +59,24 @@ public class FieldNode extends ExpressionNode {
 		return ((obj instanceof FieldNode) && (NAME.equals(((FieldNode) obj).NAME)));
 	}
 
+	/**
+	 * Returns the field that this node represents on the given class.
+	 *
+	 * @param c the class that have this node
+	 * @return the field
+	 */
+	public Field getField(Class<?> c) {
+		return (Field) getMember(c, null);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @see #getField(Class)
+	 */
 	@Override
-	public Class<?> getStaticNodeClass(Class<?> c, Map<String, Object> args) {
-		return wrap(c).getField(NAME).getType();
+	public Member getMember(Class<?> c, Map<String, Object> args) {
+		return wrap(c).getField(NAME);
 	}
 
 	@Override

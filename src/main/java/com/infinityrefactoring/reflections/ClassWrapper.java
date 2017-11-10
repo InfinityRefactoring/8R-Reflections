@@ -25,6 +25,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collection;
@@ -114,8 +115,32 @@ public class ClassWrapper<T> {
 	}
 
 	/**
+	 * Returns the type of the given member.
+	 * <ul>
+	 * <li>{@linkplain Field#getType()}</li>
+	 * <li>{@linkplain Method#getReturnType()}</li>
+	 * <li>{@linkplain Constructor#getDeclaringClass()}</li>
+	 * </ul>
+	 *
+	 * @param member the desired member
+	 * @return the type
+	 */
+	public static Class<?> getMemberType(Member member) {
+		if (member == null) {
+			return null;
+		} else if (member instanceof Field) {
+			return ((Field) member).getType();
+		} else if (member instanceof Method) {
+			return ((Method) member).getReturnType();
+		} else if (member instanceof Constructor) {
+			return ((Constructor<?>) member).getDeclaringClass();
+		}
+		throw new IllegalArgumentException("Unknown member type.");
+	}
+
+	/**
 	 * Return a map with all primitive classes mapped to respective wrapper class. Per example of {@code int} to {@linkplain Integer} class.
-	 * 
+	 *
 	 * @return the map
 	 */
 	public static Map<Class<?>, Class<?>> getPrimitiveToWrapperClassMap() {

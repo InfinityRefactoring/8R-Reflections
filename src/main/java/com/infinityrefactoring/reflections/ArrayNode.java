@@ -16,6 +16,7 @@
 package com.infinityrefactoring.reflections;
 
 import java.lang.reflect.Array;
+import java.lang.reflect.Member;
 import java.util.Map;
 
 /**
@@ -62,7 +63,7 @@ public class ArrayNode extends ExpressionNode {
 
 	/**
 	 * Returns the index of this expression.
-	 * 
+	 *
 	 * @return the index
 	 */
 	public int getIndex() {
@@ -71,11 +72,16 @@ public class ArrayNode extends ExpressionNode {
 
 	/**
 	 * Returns the internal node or null.
-	 * 
+	 *
 	 * @return the internal node or null
 	 */
 	public ExpressionNode getInternalNode() {
 		return INTERNAL_NODE;
+	}
+
+	@Override
+	public Member getMember(Class<?> c, Map<String, Object> args) {
+		return ((INTERNAL_NODE == null) ? null : INTERNAL_NODE.getMember(c, args));
 	}
 
 	@Override

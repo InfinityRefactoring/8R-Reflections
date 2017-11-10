@@ -23,6 +23,8 @@ import static java.util.regex.Pattern.quote;
 import static java.util.stream.Collectors.collectingAndThen;
 import static java.util.stream.Collectors.toList;
 
+import java.lang.reflect.Member;
+import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -97,9 +99,39 @@ public class MethodNode extends ExpressionNode {
 		return ARGUMENT_KEYS;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @see #getMethod(Class)
+	 * @see #getMethod(Class, Map)
+	 */
 	@Override
-	public Class<?> getStaticNodeClass(Class<?> c, Map<String, Object> args) {
-		return wrap(c).getCompatibleMethodWithValues(METHOD_NAME, getMethodArgs(args)).getReturnType();
+	public Member getMember(Class<?> c, Map<String, Object> args) {
+		Object[] methodArgs = getMethodArgs(args);
+		return wrap(c).getCompatibleMethodWithValues(METHOD_NAME, methodArgs);
+	}
+
+	/**
+	 * Returns the method that this node represents on the given class.
+	 *
+	 * @param c the class that have this node
+	 * @return the method
+	 * @see #getMethod(Class)
+	 */
+	public Method getMethod(Class<?> c) {
+		return getMethod(c, null);
+	}
+
+	/**
+	 * Returns the method that this node represents on the given class.
+	 *
+	 * @param c the class that have this node
+	 * @param args the arguments that will be used to access this node.
+	 * @return the method
+	 * @see #getMethod(Class)
+	 */
+	public Method getMethod(Class<?> c, Map<String, Object> args) {
+		return (Method) getMember(c, args);
 	}
 
 	@Override
