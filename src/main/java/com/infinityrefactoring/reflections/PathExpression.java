@@ -55,6 +55,7 @@ public class PathExpression implements Iterable<ExpressionNode> {
 	private static final Map<String, PathExpression> PATH_EXPRESSIONS = new HashMap<>(50);
 	private final String PATH_EXPRESSION;
 	private final List<ExpressionNode> NODES;
+	private final boolean NEED_ARGUMENTS;
 	private int LAST_INDEX;
 
 	/**
@@ -115,22 +116,13 @@ public class PathExpression implements Iterable<ExpressionNode> {
 			throw new IllegalArgumentException("Invalid path expression.");
 		}
 		NODES = unmodifiableList(Stream.of(expressionNodes).map(ExpressionNode::compile).collect(toList()));
+		NEED_ARGUMENTS = NODES.stream().anyMatch(ExpressionNode::needArguments);
 		LAST_INDEX = (NODES.size() - 1);
 	}
 
 	@Override
 	public boolean equals(Object obj) {
 		return ((obj instanceof PathExpression) && PATH_EXPRESSION.equals(((PathExpression) obj).PATH_EXPRESSION));
-	}
-
-	/**
-	 * Returns the first node.
-	 *
-	 * @return the first node.
-	 * @see #getLastNode()
-	 */
-	public ExpressionNode getFirstNode() {
-		return NODES.get(0);
 	}
 
 	/**
@@ -197,6 +189,26 @@ public class PathExpression implements Iterable<ExpressionNode> {
 	 */
 	public <R> R getExpressionValue(Object rootObj, Map<String, Object> args, InstanceFactory instanceFactory) {
 		return getExpressionValue(rootObj, args, instanceFactory, false);
+	}
+
+	/**
+	 * Returns the first node.
+	 *
+	 * @return the first node.
+	 * @see #getLastNode()
+	 */
+	public ExpressionNode getFirstNode() {
+		return NODES.get(0);
+	}
+
+	/**
+	 * Returns the last node.
+	 *
+	 * @return the last node.
+	 * @see #getFirstNode()
+	 */
+	public ExpressionNode getLastNode() {
+		return NODES.get(NODES.size() - 1);
 	}
 
 	/**
@@ -303,16 +315,6 @@ public class PathExpression implements Iterable<ExpressionNode> {
 	}
 
 	/**
-	 * Returns the last node.
-	 *
-	 * @return the last node.
-	 * @see #getFirstNode()
-	 */
-	public ExpressionNode getLastNode() {
-		return NODES.get(NODES.size() - 1);
-	}
-
-	/**
 	 * Returns a list iterator over the nodes in this path (in proper sequence).
 	 *
 	 * @return a list iterator
@@ -358,6 +360,15 @@ public class PathExpression implements Iterable<ExpressionNode> {
 	 */
 	public PathExpression moveForward(int nodesAmount) {
 		return subPath(nodesAmount, NODES.size());
+	}
+
+	/**
+	 * Returns true if some node of this path expression requires arguments to will be invoked.
+	 *
+	 * @return true if some node of this path expression requires arguments
+	 */
+	public boolean needArguments() {
+		return NEED_ARGUMENTS;
 	}
 
 	/**
