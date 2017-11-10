@@ -16,8 +16,10 @@
 package com.infinityrefactoring.reflections;
 
 import static com.infinityrefactoring.reflections.InstanceFactory.DEFAULT_FACTORY;
+import static java.util.Collections.emptyList;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -97,6 +99,42 @@ public abstract class ExpressionNode {
 	}
 
 	/**
+	 * Converts this instance to a {@linkplain ArrayNode}.
+	 *
+	 * @return this
+	 */
+	public ArrayNode asArrayNode() {
+		return (ArrayNode) this;
+	}
+
+	/**
+	 * Converts this instance to a {@linkplain FieldNode}.
+	 *
+	 * @return this
+	 */
+	public FieldNode asFieldNode() {
+		return (FieldNode) this;
+	}
+
+	/**
+	 * Converts this instance to a {@linkplain MethodNode}.
+	 *
+	 * @return this
+	 */
+	public MethodNode asMethodNode() {
+		return (MethodNode) this;
+	}
+
+	/**
+	 * Returns an ordered list with the keys of the argument map, that are required to invoke it.
+	 * 
+	 * @return the keys
+	 */
+	public List<String> getArgumentKeys() {
+		return emptyList();
+	}
+
+	/**
 	 * Returns the node name.
 	 *
 	 * @return the name
@@ -173,6 +211,42 @@ public abstract class ExpressionNode {
 	 * @see #getStaticValue(Class, Map)
 	 */
 	public abstract Object getValue(Object obj, Map<String, Object> args);
+
+	/**
+	 * Returns true if the expression node is an array.
+	 *
+	 * @return true if is an array
+	 */
+	public boolean isArray() {
+		return (this instanceof ArrayNode);
+	}
+
+	/**
+	 * Returns true if the expression node is a field.
+	 *
+	 * @return true if is an field
+	 */
+	public boolean isField() {
+		return (this instanceof FieldNode);
+	}
+
+	/**
+	 * Returns true if the expression node is a method.
+	 *
+	 * @return true if is an method
+	 */
+	public boolean isMethod() {
+		return (this instanceof MethodNode);
+	}
+
+	/**
+	 * Returns true if this node require arguments to will be invoked.
+	 * 
+	 * @return true if this node require arguments
+	 */
+	public boolean needArguments() {
+		return !getArgumentKeys().isEmpty();
+	}
 
 	/**
 	 * Sets the field value.

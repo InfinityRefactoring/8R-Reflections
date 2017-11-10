@@ -18,11 +18,16 @@ package com.infinityrefactoring.reflections;
 import static com.infinityrefactoring.reflections.ClassWrapper.wrap;
 import static com.infinityrefactoring.reflections.Reflections.invokeMethod;
 import static java.lang.String.format;
+import static java.util.Collections.emptyList;
 import static java.util.regex.Pattern.quote;
+import static java.util.stream.Collectors.collectingAndThen;
+import static java.util.stream.Collectors.toList;
 
-import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 /**
  * Represents an {@linkplain ExpressionNode#isMethod(String) method node} of a {@linkplain PathExpression path expression}.
@@ -41,12 +46,12 @@ import java.util.Objects;
  */
 public class MethodNode extends ExpressionNode {
 
-	private static final String[] EMPTY_STRING_ARRAY = new String[0];
 	private static final Object[] EMPTY_OBJECT_ARRAY = new Object[0];
 	private static final String COMMAN_REGEX = quote(",");
 	private static final String GET_REGEX = quote("get");
 	private final String METHOD_NAME;
-	private final String[] METHOD_ARG_KEYS;
+	private final String JOINED_ARGUMENT_KEYS;
+	private final List<String> ARGUMENT_KEYS;
 	private final String SETTER_METHOD_NAME;
 
 	/**
@@ -66,14 +71,13 @@ public class MethodNode extends ExpressionNode {
 		String argKeys = expressionNode.substring((leftParenthesisIndex + 1), expressionNode.lastIndexOf(')')).trim();
 
 		if (argKeys.isEmpty()) {
-			METHOD_ARG_KEYS = EMPTY_STRING_ARRAY;
+			ARGUMENT_KEYS = emptyList();
 		} else {
-			String[] separatedArgKeys = argKeys.split(COMMAN_REGEX);
-			for (int i = 0; i < separatedArgKeys.length; i++) {
-				separatedArgKeys[i] = separatedArgKeys[i].trim();
-			}
-			METHOD_ARG_KEYS = separatedArgKeys;
+			ARGUMENT_KEYS = Stream.of(argKeys.split(COMMAN_REGEX))
+					.map(String::trim)
+					.collect(collectingAndThen(toList(), Collections::unmodifiableList));
 		}
+		JOINED_ARGUMENT_KEYS = ARGUMENT_KEYS.toString();
 		SETTER_METHOD_NAME = (METHOD_NAME.startsWith("get") ? METHOD_NAME.replaceFirst(GET_REGEX, "set") : null);
 	}
 
@@ -82,10 +86,15 @@ public class MethodNode extends ExpressionNode {
 		if (obj instanceof MethodNode) {
 			MethodNode expression = ((MethodNode) obj);
 			return (METHOD_NAME.equals(expression.METHOD_NAME)
-					&& Arrays.equals(METHOD_ARG_KEYS, expression.METHOD_ARG_KEYS)
+					&& JOINED_ARGUMENT_KEYS.equals(expression.JOINED_ARGUMENT_KEYS)
 					&& Objects.equals(SETTER_METHOD_NAME, expression.SETTER_METHOD_NAME));
 		}
 		return false;
+	}
+
+	@Override
+	public List<String> getArgumentKeys() {
+		return ARGUMENT_KEYS;
 	}
 
 	@Override
@@ -95,7 +104,7 @@ public class MethodNode extends ExpressionNode {
 
 	@Override
 	public Object getStaticValue(Class<?> c) {
-		if (METHOD_ARG_KEYS.length == 0) {
+		if (ARGUMENT_KEYS.isEmpty()) {
 			return getStaticValue(c, null);
 		}
 		throw new UnsupportedOperationException("This method require arguments.");
@@ -109,7 +118,7 @@ public class MethodNode extends ExpressionNode {
 
 	@Override
 	public Object getValue(Object obj) {
-		if (METHOD_ARG_KEYS.length == 0) {
+		if (ARGUMENT_KEYS.isEmpty()) {
 			return getValue(obj, null);
 		}
 		throw new UnsupportedOperationException("This method require arguments.");
@@ -123,7 +132,7 @@ public class MethodNode extends ExpressionNode {
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(METHOD_NAME, METHOD_ARG_KEYS, SETTER_METHOD_NAME);
+		return Objects.hash(METHOD_NAME, JOINED_ARGUMENT_KEYS, SETTER_METHOD_NAME);
 	}
 
 	@Override
@@ -144,7 +153,7 @@ public class MethodNode extends ExpressionNode {
 
 	@Override
 	public String toString() {
-		return "MethodNode [METHOD_NAME=" + METHOD_NAME + ", METHOD_ARG_KEYS=" + Arrays.toString(METHOD_ARG_KEYS) + ", SETTER_METHOD_NAME=" + SETTER_METHOD_NAME + "]";
+		return "MethodNode [METHOD_NAME=" + METHOD_NAME + ", ARGUMENT_KEYS=" + JOINED_ARGUMENT_KEYS + ", SETTER_METHOD_NAME=" + SETTER_METHOD_NAME + "]";
 	}
 
 	/**
@@ -154,14 +163,15 @@ public class MethodNode extends ExpressionNode {
 	 * @return the array.
 	 */
 	private Object[] getMethodArgs(Map<String, Object> args) {
-		if (METHOD_ARG_KEYS.length == 0) {
+		if (ARGUMENT_KEYS.isEmpty()) {
 			return EMPTY_OBJECT_ARRAY;
-		} else if ((METHOD_ARG_KEYS.length > 0) && ((args == null) || args.isEmpty())) {
+		} else if ((!ARGUMENT_KEYS.isEmpty()) && ((args == null) || args.isEmpty())) {
 			throw new IllegalArgumentException("The arguments map is null or empty.");
 		}
-		Object[] values = new Object[METHOD_ARG_KEYS.length];
-		for (int i = 0; i < METHOD_ARG_KEYS.length; i++) {
-			String key = METHOD_ARG_KEYS[i];
+		int size = ARGUMENT_KEYS.size();
+		Object[] values = new Object[size];
+		for (int i = 0; i < size; i++) {
+			String key = ARGUMENT_KEYS.get(i);
 			if (args.containsKey(key)) {
 				values[i] = args.get(key);
 			} else {

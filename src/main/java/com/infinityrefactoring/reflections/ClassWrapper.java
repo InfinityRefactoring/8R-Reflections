@@ -114,6 +114,15 @@ public class ClassWrapper<T> {
 	}
 
 	/**
+	 * Return a map with all primitive classes mapped to respective wrapper class. Per example of {@code int} to {@linkplain Integer} class.
+	 * 
+	 * @return the map
+	 */
+	public static Map<Class<?>, Class<?>> getPrimitiveToWrapperClassMap() {
+		return PRIMITIVE_TO_WAPPER_CLASS;
+	}
+
+	/**
 	 * Returns the field value.
 	 *
 	 * @param field the desired field

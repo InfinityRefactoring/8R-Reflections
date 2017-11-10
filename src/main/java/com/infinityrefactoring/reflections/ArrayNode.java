@@ -60,6 +60,24 @@ public class ArrayNode extends ExpressionNode {
 		return ((obj instanceof ArrayNode) && NAME.equals(((ArrayNode) obj).NAME));
 	}
 
+	/**
+	 * Returns the index of this expression.
+	 * 
+	 * @return the index
+	 */
+	public int getIndex() {
+		return INDEX;
+	}
+
+	/**
+	 * Returns the internal node or null.
+	 * 
+	 * @return the internal node or null
+	 */
+	public ExpressionNode getInternalNode() {
+		return INTERNAL_NODE;
+	}
+
 	@Override
 	public Class<?> getStaticNodeClass(Class<?> c, Map<String, Object> args) {
 		if (INTERNAL_NODE != null) {
