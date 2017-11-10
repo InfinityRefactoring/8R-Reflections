@@ -20,9 +20,10 @@ import java.util.Collection;
 /**
  * Class used as example for the tests.
  *
- * @author Thomás Sousa Silva
+ * @author Thomás Sousa Silva (ThomasSousa96)
  */
 @SuppressWarnings("javadoc")
+@A
 public class Person {
 
 	public static String NAME = "foo";

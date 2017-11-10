@@ -27,7 +27,7 @@ import org.junit.Test;
 /**
  * Class used to test the {@linkplain Reflections} class.
  *
- * @author Thomás Sousa Silva
+ * @author Thomás Sousa Silva (ThomasSousa96)
  */
 @SuppressWarnings("javadoc")
 public class ReflectionsTest {

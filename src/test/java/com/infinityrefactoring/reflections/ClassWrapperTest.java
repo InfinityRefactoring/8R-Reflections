@@ -32,7 +32,7 @@ import org.junit.Test;
 /**
  * Class used to test the {@linkplain ClassWrapper} class.
  *
- * @author Thomás Sousa Silva
+ * @author Thomás Sousa Silva (ThomasSousa96)
  */
 @SuppressWarnings("javadoc")
 public class ClassWrapperTest {
@@ -40,6 +40,15 @@ public class ClassWrapperTest {
 	@Test
 	public void testCache() {
 		assertSame(ClassWrapper.wrap(Person.class), ClassWrapper.wrap(Person.class));
+	}
+
+	@Test
+	public void testGetField() throws NoSuchFieldException, SecurityException {
+		ClassWrapper<Person> classWrapper = ClassWrapper.wrap(Person.class);
+		String fieldName = "NAME";
+		Field field = classWrapper.getField(Predicates.withMemberName(fieldName));
+
+		assertEquals(Person.class.getField(fieldName), field);
 	}
 
 	@Test
@@ -51,15 +60,6 @@ public class ClassWrapperTest {
 
 		assertEquals(declaredFields.size(), fields.size());
 		assertTrue(declaredFields.containsAll(fields));
-	}
-
-	@Test
-	public void testGetField() throws NoSuchFieldException, SecurityException {
-		ClassWrapper<Person> classWrapper = ClassWrapper.wrap(Person.class);
-		String fieldName = "NAME";
-		Field field = classWrapper.getField(Predicates.withMemberName(fieldName));
-
-		assertEquals(Person.class.getField(fieldName), field);
 	}
 
 	@Test
@@ -83,6 +83,15 @@ public class ClassWrapperTest {
 	}
 
 	@Test
+	public void testGetMethod() throws NoSuchMethodException, SecurityException {
+		ClassWrapper<Person> classWrapper = ClassWrapper.wrap(Person.class);
+		String methodName = "getName";
+		Method method = classWrapper.getMethod(Predicates.withMemberName(methodName));
+
+		assertEquals(Person.class.getMethod(methodName), method);
+	}
+
+	@Test
 	public void testGetMethods() {
 		ClassWrapper<Person> classWrapper = ClassWrapper.wrap(Person.class);
 		Set<Method> methods = classWrapper.getMethods(Predicates.acceptAll());
@@ -96,15 +105,6 @@ public class ClassWrapperTest {
 
 		assertEquals(expected.size(), methods.size());
 		assertTrue(expected.containsAll(methods));
-	}
-
-	@Test
-	public void testGetMethod() throws NoSuchMethodException, SecurityException {
-		ClassWrapper<Person> classWrapper = ClassWrapper.wrap(Person.class);
-		String methodName = "getName";
-		Method method = classWrapper.getMethod(Predicates.withMemberName(methodName));
-
-		assertEquals(Person.class.getMethod(methodName), method);
 	}
 
 	@Test
