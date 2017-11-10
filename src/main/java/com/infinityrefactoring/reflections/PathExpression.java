@@ -15,12 +15,14 @@
  ******************************************************************************/
 package com.infinityrefactoring.reflections;
 
+import static com.infinityrefactoring.reflections.ClassWrapper.getMemberType;
 import static com.infinityrefactoring.reflections.InstanceFactory.DEFAULT_FACTORY;
 import static java.lang.String.format;
 import static java.util.Collections.unmodifiableList;
 import static java.util.regex.Pattern.quote;
 import static java.util.stream.Collectors.toList;
 
+import java.lang.reflect.Member;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -52,11 +54,37 @@ public class PathExpression implements Iterable<ExpressionNode> {
 	 * The default regex pattern for the literal String ".", that is used to split the nodes of a given path expression.
 	 */
 	public static final String DOT_REGEX = quote(".");
+
+	/**
+	 * The static path expression prefix.
+	 * A static path must be in the following pattern: "class(the.full.root.class.name)some.non.static.path.expression".
+	 *
+	 * @see #toStaticExpression(Class, String)
+	 * @see #compile(Class, String)
+	 */
+	public static final String STATIC_PATH_EXPRESSION_PREFIX = "class(";
+
 	private static final Map<String, PathExpression> PATH_EXPRESSIONS = new HashMap<>(50);
+	private final Class<?> ROOT_CLASS;
 	private final String PATH_EXPRESSION;
 	private final List<ExpressionNode> NODES;
 	private final boolean NEED_ARGUMENTS;
-	private int LAST_INDEX;
+	private final int LAST_INDEX;
+
+	/**
+	 * Compiles the given path expression in an {@linkplain #STATIC_PATH_EXPRESSION_PREFIX static path expression} instance.
+	 * Note: If this path expression already was compiled then the cached instance that will be returned.
+	 *
+	 * @param c the root class
+	 * @param pathExpression the desired path expression
+	 * @return an compiled instance
+	 * @throws IllegalArgumentException if the given expression node is null or empty
+	 * @see #compile(String)
+	 * @see #toStaticExpression(Class, String)
+	 */
+	public static PathExpression compile(Class<?> c, String pathExpression) {
+		return compile((c == null) ? pathExpression : toStaticExpression(c, pathExpression));
+	}
 
 	/**
 	 * Compiles the given path expression in an {@linkplain PathExpression} instance.
@@ -73,6 +101,49 @@ public class PathExpression implements Iterable<ExpressionNode> {
 		return PATH_EXPRESSIONS.computeIfAbsent(pathExpression, PathExpression::new);
 	}
 
+	/**
+	 * Returns the given {@linkplain #STATIC_PATH_EXPRESSION_PREFIX static path expression pattern} without the root class.
+	 *
+	 * @param pathExpression the desired path expression
+	 * @return the non static path expression
+	 * @see #toStaticExpression(Class, String)
+	 */
+	public static String toNonStaticExpression(String pathExpression) {
+		if (pathExpression.startsWith(STATIC_PATH_EXPRESSION_PREFIX)) {
+			int index = (pathExpression.indexOf(')') + 1);
+			if ((index <= STATIC_PATH_EXPRESSION_PREFIX.length()) || (index == pathExpression.length())) {
+				throw new IllegalArgumentException("Invalid static path expression.");
+			}
+			pathExpression = pathExpression.substring(index);
+		}
+		return pathExpression;
+	}
+
+	/**
+	 * Returns a String in the {@linkplain #STATIC_PATH_EXPRESSION_PREFIX static path expression pattern}.
+	 * Note: If the given path expression already a static path expression then only the root class will be replaced.
+	 *
+	 * @param c the root class
+	 * @param pathExpression the desired path expression
+	 * @return the static path expression
+	 * @see #toNonStaticExpression(String)
+	 * @see #compile(Class, String)
+	 */
+	public static String toStaticExpression(Class<?> c, String pathExpression) {
+		return String.format("%s%s)%s", STATIC_PATH_EXPRESSION_PREFIX, c.getName(), toNonStaticExpression(pathExpression));
+	}
+
+	/**
+	 * Returns the expression node value or a instance supplied by the given {@linkplain InstanceFactory}, if necessary.
+	 * Note: If the expression node value is null and is necessary an instance and the instance factory is not null, then this instance will be setted to the given node in the root object.
+	 *
+	 * @param c the class that will have the node value extracted
+	 * @param node the desired node
+	 * @param args the arguments that will be used to access this node
+	 * @param instanceFactory the factory the will be supplies instances if necessary (optional)
+	 * @param isNecessaryAnInstance use true if is necessary an instance
+	 * @return the next object
+	 */
 	private static Object getNextObj(Class<?> c, ExpressionNode node, Map<String, Object> args, InstanceFactory instanceFactory, boolean isNecessaryAnInstance) {
 		Object nextObj = node.getStaticValue(c, args);
 		if ((nextObj == null) && (instanceFactory != null) && isNecessaryAnInstance) {
@@ -89,10 +160,10 @@ public class PathExpression implements Iterable<ExpressionNode> {
 	 *
 	 * @param obj the instance that will have the node value extracted
 	 * @param node the desired node
-	 * @param args the arguments that will be used to access this node.
-	 * @param instanceFactory the factory the will be supplies instances if necessary (optional).
-	 * @param isNecessaryAnInstance use true if is necessary an instance.
-	 * @return the next object.
+	 * @param args the arguments that will be used to access this node
+	 * @param instanceFactory the factory the will be supplies instances if necessary (optional)
+	 * @param isNecessaryAnInstance use true if is necessary an instance
+	 * @return the next object
 	 */
 	private static Object getNextObj(Object rootObj, ExpressionNode node, Map<String, Object> args, InstanceFactory instanceFactory, boolean isNecessaryAnInstance) {
 		Object nextObj = node.getValue(rootObj, args);
@@ -106,18 +177,68 @@ public class PathExpression implements Iterable<ExpressionNode> {
 
 	/**
 	 * Constructs a new instance of PathExpression.
+	 *
 	 * @param pathExpression the desired path expression
-	 * @throws
+	 * @throws IllegalArgumentException if the path expression is invalid
 	 */
 	private PathExpression(String pathExpression) {
 		PATH_EXPRESSION = pathExpression;
-		String[] expressionNodes = PATH_EXPRESSION.split(DOT_REGEX);
+		String[] expressionNodes;
+		if (PATH_EXPRESSION.startsWith(STATIC_PATH_EXPRESSION_PREFIX)) {
+			int lastParameter = PATH_EXPRESSION.indexOf(')');
+			if (lastParameter <= STATIC_PATH_EXPRESSION_PREFIX.length()) {
+				throw new IllegalArgumentException("Invalid static path expression.");
+			}
+			try {
+				ROOT_CLASS = Class.forName(PATH_EXPRESSION.substring(STATIC_PATH_EXPRESSION_PREFIX.length(), lastParameter));
+			} catch (ClassNotFoundException ex) {
+				throw new IllegalArgumentException("Invalid static path expression.", ex);
+			}
+			lastParameter++;
+			if (PATH_EXPRESSION.length() <= lastParameter) {
+				throw new IllegalArgumentException("Invalid static path expression.");
+			}
+			expressionNodes = PATH_EXPRESSION.substring(lastParameter).split(DOT_REGEX);
+		} else {
+			ROOT_CLASS = null;
+			expressionNodes = PATH_EXPRESSION.split(DOT_REGEX);
+		}
+
 		if (expressionNodes.length == 0) {
 			throw new IllegalArgumentException("Invalid path expression.");
 		}
 		NODES = unmodifiableList(Stream.of(expressionNodes).map(ExpressionNode::compile).collect(toList()));
-		NEED_ARGUMENTS = NODES.stream().anyMatch(ExpressionNode::needArguments);
 		LAST_INDEX = (NODES.size() - 1);
+		NEED_ARGUMENTS = NODES.stream().anyMatch(ExpressionNode::needArguments);
+
+		if (isStaticExpression()) {
+			try {
+				getLastMember();
+			} catch (IllegalArgumentException ex) {
+				throw new IllegalArgumentException("Invalid static path expression.", ex);
+			}
+		}
+	}
+
+	/**
+	 * @param pathExpression the
+	 * @return the concatenated path expression
+	 */
+
+	/**
+	 * Concatenates the specified path expression to the end of this path expression.
+	 * Note: If the given path expression is a static path expression then only the {@linkplain #toNonStaticExpression() non static part} will be concatenated.
+	 * Examples:
+	 * <code><pre>
+	 * "foo".concat("bar") returns "foo.bar"
+	 * "foo".concat("class(com.Bar)name") returns "foo.name"
+	 * </pre></code>
+	 *
+	 * @param pathExpression the path expression that is concatenated to the end of this instance.
+	 * @return a path expression that represents the concatenation of this instance followed by the given path expression.
+	 */
+	public PathExpression concat(PathExpression pathExpression) {
+		return compile(format("%s.%s", PATH_EXPRESSION, pathExpression.toNonStaticExpression().PATH_EXPRESSION));
 	}
 
 	@Override
@@ -168,6 +289,7 @@ public class PathExpression implements Iterable<ExpressionNode> {
 	 * @see #getExpressionValue(Object, Map, InstanceFactory)
 	 * @see #setExpressionValue(Object, Object, Map)
 	 * @see #setStaticExpressionValue(Class, Object, Map)
+	 * @see #needArguments()
 	 */
 	public <R> R getExpressionValue(Object rootObj, Map<String, Object> args) {
 		return getExpressionValue(rootObj, args, null);
@@ -184,8 +306,9 @@ public class PathExpression implements Iterable<ExpressionNode> {
 	 * @see #getExpressionValue(Object, Map)
 	 * @see #getExpressionValue(Object, InstanceFactory)
 	 * @see #setExpressionValue(Object, Object, Map, InstanceFactory)
-	 * @see InstanceFactory#DEFAULT_FACTORY
 	 * @see #getStaticExpressionValue(Class, Map, InstanceFactory)
+	 * @see #needArguments()
+	 * @see InstanceFactory#DEFAULT_FACTORY
 	 */
 	public <R> R getExpressionValue(Object rootObj, Map<String, Object> args, InstanceFactory instanceFactory) {
 		return getExpressionValue(rootObj, args, instanceFactory, false);
@@ -199,6 +322,64 @@ public class PathExpression implements Iterable<ExpressionNode> {
 	 */
 	public ExpressionNode getFirstNode() {
 		return NODES.get(0);
+	}
+
+	/**
+	 * Returns the member that the last node represents on the {@linkplain #getRootClass() root class}.
+	 *
+	 * @return the member
+	 * @see #getLastMember(Class, Map)
+	 * @see #isStaticExpression()
+	 */
+	public Member getLastMember() {
+		return getLastMember(getRootClass());
+	}
+
+	/**
+	 * Returns the member that the last node represents on the given class.
+	 *
+	 * @param c the class that have this node
+	 * @return the member
+	 * @see #getLastMember(Class, Map)
+	 */
+	public Member getLastMember(Class<?> c) {
+		return getLastMember(c, null);
+	}
+
+	/**
+	 * Returns the member that the last node represents on the given class.
+	 *
+	 * @param c the class that have this node
+	 * @param args the arguments that will be used to access this node.
+	 * @return the member
+	 * @see #getLastMember(Class)
+	 * @see #needArguments()
+	 */
+	public Member getLastMember(Class<?> c, Map<String, Object> args) {
+		checkIfSupport(c, true);
+		Member member = null;
+		int i = 0;
+		for (ExpressionNode node : NODES) {
+			member = node.getMember(c, args);
+			c = getMemberType(member);
+			while ((i < LAST_INDEX) && c.isArray()) {
+				c = c.getComponentType();
+			}
+			i++;
+		}
+		return member;
+	}
+
+	/**
+	 * Returns the member that the last node represents on the {@linkplain #getRootClass() root class}.
+	 *
+	 * @param args the arguments that will be used to access this node.
+	 * @return the member
+	 * @see #getLastMember(Class, Map)
+	 * @see #isStaticExpression()
+	 */
+	public Member getLastMember(Map<String, Object> args) {
+		return getLastMember(getRootClass(), args);
 	}
 
 	/**
@@ -236,6 +417,34 @@ public class PathExpression implements Iterable<ExpressionNode> {
 	 */
 	public String getPathExpression() {
 		return PATH_EXPRESSION;
+	}
+
+	/**
+	 * Returns the root class.
+	 *
+	 * @return the root class
+	 * @see #isStaticExpression()
+	 * @throws UnsupportedOperationException if this instance is not a {@linkplain #isStaticExpression() static path expression}
+	 */
+	public Class<?> getRootClass() {
+		if (isStaticExpression()) {
+			return ROOT_CLASS;
+		}
+		throw new UnsupportedOperationException("The path expression is not a static path expression.");
+	}
+
+	/**
+	 * Returns the expression value for the {@linkplain #getRootClass() root class}.
+	 *
+	 * @return the expression value or null, if is not possible access the end of this expression or if this expression return void
+	 * @see #getStaticExpressionValue(Map)
+	 * @see #getStaticExpressionValue(InstanceFactory)
+	 * @see #getStaticExpressionValue(Map, InstanceFactory)
+	 * @see #setStaticExpressionValue(Object)
+	 * @see #isStaticExpression()
+	 */
+	public <R> R getStaticExpressionValue() {
+		return getStaticExpressionValue(getRootClass());
 	}
 
 	/**
@@ -281,6 +490,7 @@ public class PathExpression implements Iterable<ExpressionNode> {
 	 * @see #getStaticExpressionValue(Class, Map, InstanceFactory)
 	 * @see #setStaticExpressionValue(Class, Object, Map)
 	 * @see #getExpressionValue(Object, Map)
+	 * @see #needArguments()
 	 */
 	public <R> R getStaticExpressionValue(Class<?> c, Map<String, Object> args) {
 		return getStaticExpressionValue(c, args, null);
@@ -298,15 +508,76 @@ public class PathExpression implements Iterable<ExpressionNode> {
 	 * @see #getStaticExpressionValue(Class, InstanceFactory)
 	 * @see #setStaticExpressionValue(Class, Object, Map, InstanceFactory)
 	 * @see #getExpressionValue(Object, Map, InstanceFactory)
+	 * @see #needArguments()
 	 * @see InstanceFactory#DEFAULT_FACTORY
 	 */
 	public <R> R getStaticExpressionValue(Class<?> c, Map<String, Object> args, InstanceFactory instanceFactory) {
 		return getExpressionValue(c, args, instanceFactory, true);
 	}
 
+	/**
+	 * Returns the expression value for the {@linkplain #getRootClass() root class}.
+	 *
+	 * @param instanceFactory the factory the will be supplies instances if necessary (optional)
+	 * @return the expression value or null, if is not possible access the end of this expression or if this expression return void
+	 * @see #getStaticExpressionValue()
+	 * @see #getStaticExpressionValue(Map)
+	 * @see #getStaticExpressionValue(Map, InstanceFactory)
+	 * @see #setStaticExpressionValue(Object, InstanceFactory)
+	 * @see InstanceFactory#DEFAULT_FACTORY
+	 * @see #isStaticExpression()
+	 */
+	public <R> R getStaticExpressionValue(InstanceFactory instanceFactory) {
+		return getStaticExpressionValue(getRootClass(), instanceFactory);
+	}
+
+	/**
+	 * Returns the expression value for the {@linkplain #getRootClass() root class}.
+	 *
+	 * @param args the arguments that will be used to access this node (optional)
+	 * @return the expression value or null, if is not possible access the end of this expression or if this expression return void
+	 * @see #getStaticExpressionValue()
+	 * @see #getStaticExpressionValue(InstanceFactory)
+	 * @see #getStaticExpressionValue(Map, InstanceFactory)
+	 * @see #setStaticExpressionValue(Object, Map)
+	 * @see #isStaticExpression()
+	 * @see #needArguments()
+	 */
+	public <R> R getStaticExpressionValue(Map<String, Object> args) {
+		return getStaticExpressionValue(getRootClass(), args);
+	}
+
+	/**
+	 * Returns the expression value for the {@linkplain #getRootClass() root class}.
+	 *
+	 * @param args the arguments that will be used to access this node (optional)
+	 * @param instanceFactory the factory the will be supplies instances if necessary (optional)
+	 * @return the expression value or null, if is not possible access the end of this expression or if this expression return void
+	 * @see #getStaticExpressionValue()
+	 * @see #getStaticExpressionValue(Map)
+	 * @see #getStaticExpressionValue(InstanceFactory)
+	 * @see #setStaticExpressionValue(Object, Map, InstanceFactory)
+	 * @see #isStaticExpression()
+	 * @see #needArguments()
+	 * @see InstanceFactory#DEFAULT_FACTORY
+	 */
+	public <R> R getStaticExpressionValue(Map<String, Object> args, InstanceFactory instanceFactory) {
+		return getStaticExpressionValue(getRootClass(), args, instanceFactory);
+	}
+
 	@Override
 	public int hashCode() {
 		return PATH_EXPRESSION.hashCode();
+	}
+
+	/**
+	 * Returns true if this instance is a {@linkplain #STATIC_PATH_EXPRESSION_PREFIX static path expression}.
+	 *
+	 * @return the true if this instance is a static path expression
+	 * @see #getRootClass()
+	 */
+	public boolean isStaticExpression() {
+		return (ROOT_CLASS != null);
 	}
 
 	@Override
@@ -363,9 +634,9 @@ public class PathExpression implements Iterable<ExpressionNode> {
 	}
 
 	/**
-	 * Returns true if some node of this path expression requires arguments to will be invoked.
+	 * Returns true if some node require arguments to will be invoked.
 	 *
-	 * @return true if some node of this path expression requires arguments
+	 * @return true if some node require arguments
 	 */
 	public boolean needArguments() {
 		return NEED_ARGUMENTS;
@@ -417,6 +688,7 @@ public class PathExpression implements Iterable<ExpressionNode> {
 	 * @see #setExpressionValue(Object, Object, Map, InstanceFactory)
 	 * @see #getExpressionValue(Object, Map)
 	 * @see #setStaticExpressionValue(Class, Object, Map)
+	 * @see #needArguments()
 	 * @see InstanceFactory#DEFAULT_FACTORY
 	 */
 	public void setExpressionValue(Object rootObj, Object newValue, Map<String, Object> args) {
@@ -436,6 +708,7 @@ public class PathExpression implements Iterable<ExpressionNode> {
 	 * @see #setExpressionValue(Object, Object, Map, InstanceFactory)
 	 * @see #getExpressionValue(Object, Map, InstanceFactory)
 	 * @see #setStaticExpressionValue(Class, Object, Map, InstanceFactory)
+	 * @see #needArguments()
 	 * @see InstanceFactory#DEFAULT_FACTORY
 	 */
 	public void setExpressionValue(Object rootObj, Object newValue, Map<String, Object> args, InstanceFactory instanceFactory) {
@@ -490,6 +763,7 @@ public class PathExpression implements Iterable<ExpressionNode> {
 	 * @see #getStaticExpressionValue(Class, Map)
 	 * @see #setStaticExpressionValue(Class, Object, Map)
 	 * @see #setExpressionValue(Object, Object, Map)
+	 * @see #needArguments()
 	 * @see InstanceFactory#DEFAULT_FACTORY
 	 */
 	public void setStaticExpressionValue(Class<?> c, Object newValue, Map<String, Object> args) {
@@ -510,10 +784,79 @@ public class PathExpression implements Iterable<ExpressionNode> {
 	 * @see #getStaticExpressionValue(Class, Map, InstanceFactory)
 	 * @see #setStaticExpressionValue(Class, Object, Map, InstanceFactory)
 	 * @see #setExpressionValue(Object, Object, Map, InstanceFactory)
+	 * @see #needArguments()
 	 * @see InstanceFactory#DEFAULT_FACTORY
 	 */
 	public void setStaticExpressionValue(Class<?> c, Object newValue, Map<String, Object> args, InstanceFactory instanceFactory) {
 		setExpressionValue(c, newValue, args, instanceFactory, true);
+	}
+
+	/**
+	 * Sets the expression value for the {@linkplain #getRootClass() root class}.
+	 * Note: This method uses the {@linkplain InstanceFactory#DEFAULT_FACTORY default factory} to supplies instances if necessary
+	 *
+	 * @param newValue the new expression value
+	 * @see #setStaticExpressionValue(Object, Map)
+	 * @see #setStaticExpressionValue(Object, InstanceFactory)
+	 * @see #setStaticExpressionValue(Object, Map, InstanceFactory)
+	 * @see #getStaticExpressionValue()
+	 * @see InstanceFactory#DEFAULT_FACTORY
+	 */
+	public void setStaticExpressionValue(Object newValue) {
+		setStaticExpressionValue(getRootClass(), newValue);
+	}
+
+	/**
+	 * Sets the expression value for the {@linkplain #getRootClass() root class}.
+	 *
+	 * @param newValue the new expression value
+	 * @param instanceFactory the factory the will be supplies instances if necessary (optional)
+	 * @see #setStaticExpressionValue(Object)
+	 * @see #setStaticExpressionValue(Object, Map)
+	 * @see #setStaticExpressionValue(Object, Map, InstanceFactory)
+	 * @see #getStaticExpressionValue(InstanceFactory)
+	 * @see #setStaticExpressionValue(Object, InstanceFactory)
+	 * @see InstanceFactory#DEFAULT_FACTORY
+	 */
+	public void setStaticExpressionValue(Object newValue, InstanceFactory instanceFactory) {
+		setStaticExpressionValue(getRootClass(), newValue, instanceFactory);
+	}
+
+	/**
+	 * Sets the expression value for the {@linkplain #getRootClass() root class}.
+	 * Note: This method uses the {@linkplain InstanceFactory#DEFAULT_FACTORY default factory} to supplies instances if necessary
+	 *
+	 * @param newValue the new expression value
+	 * @param args the arguments that will be used to access this node (optional)
+	 * @see #setStaticExpressionValue(Object)
+	 * @see #setStaticExpressionValue(Object, InstanceFactory)
+	 * @see #setStaticExpressionValue(Object, Map, InstanceFactory)
+	 * @see #getStaticExpressionValue(Map)
+	 * @see #setStaticExpressionValue(Object, Map)
+	 * @see #needArguments()
+	 * @see InstanceFactory#DEFAULT_FACTORY
+	 */
+	public void setStaticExpressionValue(Object newValue, Map<String, Object> args) {
+		setStaticExpressionValue(getRootClass(), newValue, args);
+	}
+
+	/**
+	 * Sets the expression value for the {@linkplain #getRootClass() root class}.
+	 *
+	 * @param newValue the new expression value
+	 * @param args the arguments that will be used to access this node (optional)
+	 * @param instanceFactory the factory the will be supplies instances if necessary (optional)
+	 * @see #setStaticExpressionValue(Object)
+	 * @see #setStaticExpressionValue(Object, Map)
+	 * @see #setStaticExpressionValue(Object, InstanceFactory)
+	 * @see #setStaticExpressionValue(Object, Map, InstanceFactory)
+	 * @see #getStaticExpressionValue(Map, InstanceFactory)
+	 * @see #setStaticExpressionValue(Object, Map, InstanceFactory)
+	 * @see #needArguments()
+	 * @see InstanceFactory#DEFAULT_FACTORY
+	 */
+	public void setStaticExpressionValue(Object newValue, Map<String, Object> args, InstanceFactory instanceFactory) {
+		setStaticExpressionValue(getRootClass(), newValue, args, instanceFactory);
 	}
 
 	@Override
@@ -549,7 +892,7 @@ public class PathExpression implements Iterable<ExpressionNode> {
 		} else if (endIndex > NODES.size()) {
 			throw new IllegalArgumentException(format("The endIndex must be less than or equal to %s.", NODES.size()));
 		} else if ((endIndex - beginIndex) == 1) {
-			return compile(NODES.get(beginIndex).getName());
+			return compile(ROOT_CLASS, NODES.get(beginIndex).getName());
 		}
 
 		StringBuilder builder = new StringBuilder();
@@ -559,12 +902,44 @@ public class PathExpression implements Iterable<ExpressionNode> {
 			}
 			builder.append(NODES.get(i).getName());
 		}
-		return compile(builder.toString());
+		return compile(ROOT_CLASS, builder.toString());
+	}
+
+	/**
+	 * Returns a path expression that represents this instance without the {@linkplain #getRootClass() root class}
+	 *
+	 * @return the non static path expression
+	 * @see #toStaticExpression(Class)
+	 */
+	public PathExpression toNonStaticExpression() {
+		if (isStaticExpression()) {
+			return compile(toNonStaticExpression(PATH_EXPRESSION));
+		}
+		return this;
+	}
+
+	/**
+	 * Returns a path expression in the {@linkplain #STATIC_PATH_EXPRESSION_PREFIX static path expression pattern}.
+	 * Note: If this instance already a static path expression then only the root class will be replaced.
+	 *
+	 * @param c the root class
+	 * @return the static path expression
+	 * @see #toNonStaticExpression()
+	 * @see #compile(Class, String)
+	 */
+	public PathExpression toStaticExpression(Class<?> c) {
+		return compile(c, PATH_EXPRESSION);
 	}
 
 	@Override
 	public String toString() {
 		return PATH_EXPRESSION;
+	}
+
+	private void checkIfSupport(Object rootObj, boolean staticExpressionValue) {
+		if (isStaticExpression() && ((!staticExpressionValue) || (rootObj != ROOT_CLASS))) {
+			throw new UnsupportedOperationException("The static path expression not accept rootObj.");
+		}
 	}
 
 	/**
@@ -578,6 +953,7 @@ public class PathExpression implements Iterable<ExpressionNode> {
 	 */
 	@SuppressWarnings("unchecked")
 	private <R> R getExpressionValue(Object rootObj, Map<String, Object> args, InstanceFactory instanceFactory, boolean staticExpressionValue) {
+		checkIfSupport(rootObj, staticExpressionValue);
 		if (rootObj == null) {
 			return null;
 		}
@@ -608,6 +984,7 @@ public class PathExpression implements Iterable<ExpressionNode> {
 	 * @param staticExpressionValue use true to indicate that the begin of this path is static.
 	 */
 	private void setExpressionValue(Object rootObj, Object newValue, Map<String, Object> args, InstanceFactory instanceFactory, boolean staticExpressionValue) {
+		checkIfSupport(rootObj, staticExpressionValue);
 		if (rootObj != null) {
 			int index = 0;
 			Object nextObj = null;

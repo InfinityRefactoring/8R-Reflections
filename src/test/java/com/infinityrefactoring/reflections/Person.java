@@ -27,6 +27,7 @@ public class Person {
 
 	public static String NAME = "foo";
 	public static String NULL;
+	public static Address ADDRESS = new Address();
 
 	private String name;
 	private Address[] addresses;
