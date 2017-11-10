@@ -471,10 +471,10 @@ public class ClassWrapper<T> {
 	/**
 	 * Provides the constructors that matches with the predicate to the given consumer.
 	 *
-	 * @param consumer the constructors consumer
 	 * @param predicate the predicate that will be used to filter the constructors
+	 * @param consumer the constructors consumer
 	 */
-	public void acceptConstructors(Consumer<? super Constructor<?>> consumer, Predicate<? super Constructor<?>> predicate) {
+	public void acceptConstructors(Predicate<? super Constructor<?>> predicate, Consumer<? super Constructor<?>> consumer) {
 		validate(consumer, predicate);
 		for (Constructor<?> constructor : CONSTRUCTORS) {
 			if (predicate.test(constructor)) {
@@ -487,11 +487,11 @@ public class ClassWrapper<T> {
 	 * Provides the fields that matches with the predicate to the given consumer.
 	 *
 	 * @param searchInSuperclasses use true to search in all superclass
-	 * @param consumer the fields consumer
 	 * @param predicate the predicate that will be used to filter the fields
-	 * @see #acceptFields(Consumer, Predicate)
+	 * @param consumer the fields consumer
+	 * @see #acceptFields(Predicate, Consumer)
 	 */
-	public void acceptFields(boolean searchInSuperclasses, Consumer<? super Field> consumer, Predicate<? super Field> predicate) {
+	public void acceptFields(boolean searchInSuperclasses, Predicate<? super Field> predicate, Consumer<? super Field> consumer) {
 		validate(consumer, predicate);
 		Collection<Field> fields = FIELDS.values();
 		for (Field field : fields) {
@@ -501,7 +501,7 @@ public class ClassWrapper<T> {
 		}
 		if (searchInSuperclasses) {
 			for (ClassWrapper<? super T> wrapper : SUPER_CLASS_WRAPPERS) {
-				wrapper.acceptFields(searchInSuperclasses, consumer, predicate);
+				wrapper.acceptFields(searchInSuperclasses, predicate, consumer);
 			}
 		}
 	}
@@ -510,12 +510,12 @@ public class ClassWrapper<T> {
 	 * Provides the fields that matches with the predicate to the given consumer.
 	 * Note: this method will search in the superclasses.
 	 *
-	 * @param consumer the fields consumer
 	 * @param predicate the predicate that will be used to filter the fields
-	 * @see #acceptFields(boolean, Consumer, Predicate)
+	 * @param consumer the fields consumer
+	 * @see #acceptFields(boolean, Predicate, Consumer)
 	 */
-	public void acceptFields(Consumer<? super Field> consumer, Predicate<? super Field> predicate) {
-		acceptFields(true, consumer, predicate);
+	public void acceptFields(Predicate<? super Field> predicate, Consumer<? super Field> consumer) {
+		acceptFields(true, predicate, consumer);
 	}
 
 	/**
@@ -524,9 +524,9 @@ public class ClassWrapper<T> {
 	 * @param searchInSuperclasses use true to search in all superclass
 	 * @param consumer the methods consumer
 	 * @param predicate the predicate that will be used to filter the methods
-	 * @see #acceptMethods(Consumer, Predicate)
+	 * @see #acceptMethods(Predicate, Consumer)
 	 */
-	public void acceptMethods(boolean searchInSuperclasses, Consumer<? super Method> consumer, Predicate<? super Method> predicate) {
+	public void acceptMethods(boolean searchInSuperclasses, Predicate<? super Method> predicate, Consumer<? super Method> consumer) {
 		validate(consumer, predicate);
 		Collection<Set<Method>> methods = METHODS.values();
 		for (Set<Method> set : methods) {
@@ -538,7 +538,7 @@ public class ClassWrapper<T> {
 		}
 		if (searchInSuperclasses) {
 			for (ClassWrapper<? super T> wrapper : SUPER_CLASS_WRAPPERS) {
-				wrapper.acceptMethods(searchInSuperclasses, consumer, predicate);
+				wrapper.acceptMethods(searchInSuperclasses, predicate, consumer);
 			}
 		}
 	}
@@ -547,12 +547,12 @@ public class ClassWrapper<T> {
 	 * Provides the methods that matches with the predicate to the given consumer.
 	 * Note: this method will search in the superclasses.
 	 *
-	 * @param consumer the methods consumer
 	 * @param predicate the predicate that will be used to filter the methods
-	 * @see #acceptMethods(boolean, Consumer, Predicate)
+	 * @param consumer the methods consumer
+	 * @see #acceptMethods(boolean, Predicate, Consumer)
 	 */
-	public void acceptMethods(Consumer<? super Method> consumer, Predicate<? super Method> predicate) {
-		acceptMethods(true, consumer, predicate);
+	public void acceptMethods(Predicate<? super Method> predicate, Consumer<? super Method> consumer) {
+		acceptMethods(true, predicate, consumer);
 	}
 
 	@Override
@@ -659,7 +659,7 @@ public class ClassWrapper<T> {
 	 * @throws IllegalArgumentException if not found
 	 * @see #tryGetConstructor(Predicate)
 	 * @see #getConstructors(Predicate)
-	 * @see #acceptConstructors(Consumer, Predicate)
+	 * @see #acceptConstructors(Predicate, Consumer)
 	 */
 	public Constructor<?> getConstructor(Predicate<? super Constructor<?>> predicate) {
 		Constructor<?> constructor = tryGetConstructor(predicate);
@@ -675,11 +675,11 @@ public class ClassWrapper<T> {
 	 * @param predicate the filter
 	 * @return the constructors
 	 * @see #getConstructor(Predicate)
-	 * @see #acceptConstructors(Consumer, Predicate)
+	 * @see #acceptConstructors(Predicate, Consumer)
 	 */
 	public Set<Constructor<?>> getConstructors(Predicate<? super Constructor<?>> predicate) {
 		Set<Constructor<?>> set = new HashSet<>();
-		acceptConstructors(set::add, predicate);
+		acceptConstructors(predicate, set::add);
 		return set;
 	}
 
@@ -755,12 +755,12 @@ public class ClassWrapper<T> {
 	 * @param predicate the filter
 	 * @return the fields
 	 * @see #getFields(Predicate)
-	 * @see #acceptFields(Consumer, Predicate)
-	 * @see #acceptFields(boolean, Consumer, Predicate)
+	 * @see #acceptFields(Predicate, Consumer)
+	 * @see #acceptFields(boolean, Predicate, Consumer)
 	 */
 	public Set<Field> getFields(boolean searchInSuperclasses, Predicate<? super Field> predicate) {
 		Set<Field> set = new HashSet<>();
-		acceptFields(searchInSuperclasses, set::add, predicate);
+		acceptFields(searchInSuperclasses, predicate, set::add);
 		return set;
 	}
 
@@ -771,8 +771,8 @@ public class ClassWrapper<T> {
 	 * @param predicate the filter
 	 * @return the fields
 	 * @see #getFields(boolean, Predicate)
-	 * @see #acceptFields(Consumer, Predicate)
-	 * @see #acceptFields(boolean, Consumer, Predicate)
+	 * @see #acceptFields(Predicate, Consumer)
+	 * @see #acceptFields(boolean, Predicate, Consumer)
 	 */
 	public Set<Field> getFields(Predicate<? super Field> predicate) {
 		return getFields(true, predicate);
@@ -850,12 +850,12 @@ public class ClassWrapper<T> {
 	 * @param predicate the filter
 	 * @return the methods
 	 * @see #getMethods(Predicate)
-	 * @see #acceptMethods(Consumer, Predicate)
-	 * @see #acceptMethods(boolean, Consumer, Predicate)
+	 * @see #acceptMethods(Predicate, Consumer)
+	 * @see #acceptMethods(boolean, Predicate, Consumer)
 	 */
 	public Set<Method> getMethods(boolean searchInSuperclasses, Predicate<? super Method> predicate) {
 		Set<Method> set = new HashSet<>();
-		acceptMethods(searchInSuperclasses, set::add, predicate);
+		acceptMethods(searchInSuperclasses, predicate, set::add);
 		return set;
 	}
 
@@ -866,8 +866,8 @@ public class ClassWrapper<T> {
 	 * @param predicate the filter
 	 * @return the fields
 	 * @see #getMethods(boolean, Predicate)
-	 * @see #acceptMethods(Consumer, Predicate)
-	 * @see #acceptMethods(boolean, Consumer, Predicate)
+	 * @see #acceptMethods(Predicate, Consumer)
+	 * @see #acceptMethods(boolean, Predicate, Consumer)
 	 */
 	public Set<Method> getMethods(Predicate<? super Method> predicate) {
 		return getMethods(true, predicate);
@@ -1130,7 +1130,7 @@ public class ClassWrapper<T> {
 	 * @return the constructor or null
 	 * @see #getConstructor(Predicate)
 	 * @see #getConstructors(Predicate)
-	 * @see #acceptConstructors(Consumer, Predicate)
+	 * @see #acceptConstructors(Predicate, Consumer)
 	 */
 	public Constructor<?> tryGetConstructor(Predicate<? super Constructor<?>> predicate) {
 		for (Constructor<?> constructor : CONSTRUCTORS) {
