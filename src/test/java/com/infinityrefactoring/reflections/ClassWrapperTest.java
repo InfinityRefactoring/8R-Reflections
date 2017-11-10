@@ -38,12 +38,12 @@ import org.junit.Test;
 public class ClassWrapperTest {
 
 	@Test
-	public void cacheTest() {
+	public void testCache() {
 		assertSame(ClassWrapper.wrap(Person.class), ClassWrapper.wrap(Person.class));
 	}
 
 	@Test
-	public void getFieldsTest() {
+	public void testGetFields() {
 		ClassWrapper<Person> classWrapper = ClassWrapper.wrap(Person.class);
 		Set<Field> fields = classWrapper.getFields(Predicates.acceptAll());
 
@@ -54,7 +54,7 @@ public class ClassWrapperTest {
 	}
 
 	@Test
-	public void getFieldTest() throws NoSuchFieldException, SecurityException {
+	public void testGetField() throws NoSuchFieldException, SecurityException {
 		ClassWrapper<Person> classWrapper = ClassWrapper.wrap(Person.class);
 		String fieldName = "NAME";
 		Field field = classWrapper.getField(Predicates.withMemberName(fieldName));
@@ -63,7 +63,7 @@ public class ClassWrapperTest {
 	}
 
 	@Test
-	public void getFieldValueTest() {
+	public void testGetFieldValue() {
 		ClassWrapper<Person> classWrapper = ClassWrapper.wrap(Person.class);
 		Person person = classWrapper.newInstance();
 		person.setName("foo");
@@ -72,7 +72,7 @@ public class ClassWrapperTest {
 	}
 
 	@Test
-	public void getInvokeMethodTest() {
+	public void testGetInvokeMethod() {
 		ClassWrapper<Person> classWrapper = ClassWrapper.wrap(Person.class);
 		Person person = classWrapper.newInstance();
 		String name = "foo";
@@ -83,7 +83,7 @@ public class ClassWrapperTest {
 	}
 
 	@Test
-	public void getMethodsTest() {
+	public void testGetMethods() {
 		ClassWrapper<Person> classWrapper = ClassWrapper.wrap(Person.class);
 		Set<Method> methods = classWrapper.getMethods(Predicates.acceptAll());
 
@@ -99,7 +99,7 @@ public class ClassWrapperTest {
 	}
 
 	@Test
-	public void getMethodTest() throws NoSuchMethodException, SecurityException {
+	public void testGetMethod() throws NoSuchMethodException, SecurityException {
 		ClassWrapper<Person> classWrapper = ClassWrapper.wrap(Person.class);
 		String methodName = "getName";
 		Method method = classWrapper.getMethod(Predicates.withMemberName(methodName));
@@ -108,14 +108,14 @@ public class ClassWrapperTest {
 	}
 
 	@Test
-	public void getStaticFieldValueTest() {
+	public void testGetStaticFieldValue() {
 		ClassWrapper<Person> classWrapper = ClassWrapper.wrap(Person.class);
 		String foo = classWrapper.getStaticFieldValue("NAME");
 		assertSame(Person.NAME, foo);
 	}
 
 	@Test
-	public void newInstanceWithoutParametersTest() {
+	public void testNewInstanceWithoutParameters() {
 		ClassWrapper<Person> classWrapper = ClassWrapper.wrap(Person.class);
 		Person person = classWrapper.newInstance();
 
@@ -123,7 +123,7 @@ public class ClassWrapperTest {
 		assertSame(person.getClass(), Person.class);
 	}
 
-	public void newInstanceWithParametersTest() {
+	public void testNewInstanceWithParameters() {
 		ClassWrapper<Person> classWrapper = ClassWrapper.wrap(Person.class);
 
 		String name = "Thomás";

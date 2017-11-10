@@ -35,7 +35,7 @@ import org.junit.Test;
 public class PathExpressionTest {
 
 	@Test
-	public void cacheTest() {
+	public void testCache() {
 		String pathExpression = "addresses[0].state";
 		assertSame(PathExpression.compile(pathExpression), PathExpression.compile(pathExpression));
 
@@ -43,7 +43,7 @@ public class PathExpressionTest {
 	}
 
 	@Test
-	public void getStaticExpressionValueTest() throws Exception {
+	public void testGetStaticExpressionValue() throws Exception {
 		PathExpression pathExpression = PathExpression.compile("NAME.equals(x)");
 
 		Map<String, Object> map = Collections.singletonMap("x", Person.NAME);
@@ -71,7 +71,7 @@ public class PathExpressionTest {
 	}
 
 	@Test
-	public void setAllExpressionsTest() {
+	public void testSetAllExpressions() {
 		String state = "PE";
 		Person person = Reflections.newInstance(Person.class);
 		PathExpression pathExpression = PathExpression.compile("addresses[0].state");
@@ -82,7 +82,7 @@ public class PathExpressionTest {
 	}
 
 	@Test
-	public void setStaticExpressionValueTest() throws Exception {
+	public void testSetStaticExpressionValue() throws Exception {
 		PathExpression pathExpression = PathExpression.compile("NAME");
 		String name = pathExpression.getStaticExpressionValue(Person.class);
 		assertSame(Person.NAME, name);
@@ -94,7 +94,7 @@ public class PathExpressionTest {
 	}
 
 	@Test
-	public void subPathTest() {
+	public void testSubPath() {
 		PathExpression pathExpression = PathExpression.compile("addresses[0].state.isEmpty()");
 
 		assertSame(pathExpression, pathExpression.subPath(0, pathExpression.getNodesAmount()));

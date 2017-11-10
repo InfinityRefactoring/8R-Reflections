@@ -33,7 +33,7 @@ import org.junit.Test;
 public class ReflectionsTest {
 
 	@Test
-	public void setAllExpressionsTest() {
+	public void testSetAllExpressions() {
 		Person person = Reflections.newInstance(Person.class);
 
 		String name = "Thomás Sousa Silva";
