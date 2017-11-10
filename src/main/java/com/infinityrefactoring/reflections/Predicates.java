@@ -343,6 +343,26 @@ public class Predicates {
 	}
 
 	/**
+	 * Returns a predicate that tests if a annotated element is annotated with the given annotation class.
+	 *
+	 * @param annotationClass the desired annotation class
+	 * @return a predicate
+	 * @throws NullPointerException if the given class is null
+	 */
+	public static <T extends AnnotatedElement> Predicate<T> withAnnotationAnnotatedWith(Class<? extends Annotation> annotationClass) {
+		requireNonNull(annotationClass);
+		return annotatedElement -> {
+			Annotation[] annotations = annotatedElement.getAnnotations();
+			for (Annotation annotation : annotations) {
+				if (annotation.annotationType().isAnnotationPresent(annotationClass)) {
+					return true;
+				}
+			}
+			return false;
+		};
+	}
+
+	/**
 	 * Returns a predicate that applies the {@linkplain Class#getModifiers() modifiers} of a given class to given predicate.
 	 *
 	 * @param predicate a predicate that tests the modifiers of a given class
