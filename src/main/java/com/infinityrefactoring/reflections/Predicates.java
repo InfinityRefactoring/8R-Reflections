@@ -30,6 +30,7 @@ import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.function.IntFunction;
 import java.util.function.Predicate;
 
@@ -497,6 +498,41 @@ public class Predicates {
 	public static <T extends Member> Predicate<T> withMemberSuffix(String suffix) {
 		requireNonNull(suffix);
 		return member -> member.getName().endsWith(suffix);
+	}
+
+	/**
+	 * Returns a predicate that tests if a method has the {@linkplain Method#getReturnType() return type},
+	 * {@linkplain Method#getName() name} and {@linkplain Method#getParameterTypes() parameter type} equal to given the given values.
+	 *
+	 * @param returnType the return type
+	 * @param equalIfReturnTypeIsSubtype use true to verify if the return type of the a method is a subtype of the specified type, otherwise use false for use the equality as comparison
+	 * @param name the method name
+	 * @param parameterTypes the parameter type of the method
+	 * @return a predicate
+	 * @throws NullPointerException if some given argument is null
+	 * @see #withMethodSignature(Class, String, Class...)
+	 */
+	public static Predicate<Method> withMethodSignature(Class<?> returnType, boolean equalIfReturnTypeIsSubtype, String name, Class<?>... parameterTypes) {
+		Objects.requireNonNull(returnType);
+		Objects.requireNonNull(name);
+		Objects.requireNonNull(parameterTypes);
+		return method -> ((equalIfReturnTypeIsSubtype ? returnType.isAssignableFrom(method.getReturnType()) : (method.getReturnType() == returnType))
+				&& method.getName().equals(name) && Arrays.equals(method.getParameterTypes(), parameterTypes));
+	}
+
+	/**
+	 * Returns a predicate that tests if a method has the {@linkplain Method#getReturnType() return type},
+	 * {@linkplain Method#getName() name} and {@linkplain Method#getParameterTypes() parameter type} equal to given the given values.
+	 *
+	 * @param returnType the return type
+	 * @param name the method name
+	 * @param parameterTypes the parameter type of the method
+	 * @return a predicate
+	 * @throws NullPointerException if some given argument is null
+	 * @see #withMethodSignature(Class, boolean, String, Class...)
+	 */
+	public static Predicate<Method> withMethodSignature(Class<?> returnType, String name, Class<?>... parameterTypes) {
+		return withMethodSignature(returnType, false, name, parameterTypes);
 	}
 
 	/**

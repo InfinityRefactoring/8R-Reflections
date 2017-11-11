@@ -19,6 +19,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Method;
 import java.util.function.Predicate;
 
 import org.junit.Test;
@@ -38,6 +39,17 @@ public class PredicatesTest {
 
 		Predicate<AnnotatedElement> predicateB = Predicates.withAnnotationAnnotatedWith(B.class);
 		assertTrue(predicateB.test(Person.class));
+	}
+
+	@Test
+	public void testWithMethodSignature() {
+		Predicate<Method> predicate1 = Predicates.withMethodSignature(void.class, "testWithMethodSignature");
+		Method method1 = ClassWrapper.wrap(PredicatesTest.class).getCompatibleMethodWithTypes("testWithMethodSignature");
+		assertTrue(predicate1.test(method1));
+
+		Predicate<Method> predicate2 = Predicates.withMethodSignature(CharSequence.class, true, "getName");
+		Method method2 = ClassWrapper.wrap(Person.class).getCompatibleMethodWithTypes("getName");
+		assertTrue(predicate2.test(method2));
 	}
 
 }
