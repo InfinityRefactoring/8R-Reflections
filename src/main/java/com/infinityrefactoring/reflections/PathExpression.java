@@ -130,7 +130,7 @@ public class PathExpression implements Iterable<ExpressionNode> {
 	 * @see #compile(Class, String)
 	 */
 	public static String toStaticExpression(Class<?> c, String pathExpression) {
-		return String.format("%s%s)%s", STATIC_PATH_EXPRESSION_PREFIX, c.getName(), toNonStaticExpression(pathExpression));
+		return format("%s%s)%s", STATIC_PATH_EXPRESSION_PREFIX, c.getName(), toNonStaticExpression(pathExpression));
 	}
 
 	/**
@@ -356,18 +356,7 @@ public class PathExpression implements Iterable<ExpressionNode> {
 	 * @see #needArguments()
 	 */
 	public Member getLastMember(Class<?> c, Map<String, Object> args) {
-		checkIfSupport(c, true);
-		Member member = null;
-		int i = 0;
-		for (ExpressionNode node : NODES) {
-			member = node.getMember(c, args);
-			c = getMemberType(member);
-			while ((i < LAST_INDEX) && c.isArray()) {
-				c = c.getComponentType();
-			}
-			i++;
-		}
-		return member;
+		return getMemberOf(LAST_INDEX, c, args);
 	}
 
 	/**
@@ -390,6 +379,53 @@ public class PathExpression implements Iterable<ExpressionNode> {
 	 */
 	public ExpressionNode getLastNode() {
 		return NODES.get(NODES.size() - 1);
+	}
+
+	public Member getMemberOf(int index) {
+		return getMemberOf(index, getRootClass(), null);
+	}
+
+	public Member getMemberOf(int index, Class<?> c) {
+		return getMemberOf(index, c, null);
+	}
+
+	/**
+	 * Returns the member that the given node index represents on the given class.
+	 * @param index the node index (inclusive)
+	 * @param c the class that have this node
+	 * @param args the arguments that will be used to access this node.
+	 * @return the member
+	 * @see #getMemberOf(int)
+	 * @see #getMemberOf(int, Map)
+	 * @see #getMemberOf(int, Class)
+	 * @see #getLastMember(Class, Map)
+	 * @see #needArguments()
+	 * @throws IndexOutOfBoundsException if the index is invalid
+	 * @throws
+	 */
+	public Member getMemberOf(int index, Class<?> c, Map<String, Object> args) {
+		checkIfSupport(c, true);
+		checkRange("Index", index, false);
+		Member member = null;
+		int i = 0;
+		for (ExpressionNode node : NODES) {
+			member = node.getMember(c, args);
+			if (i == index) {
+				return member;
+			}
+			if (i < LAST_INDEX) {
+				c = getMemberType(member);
+				while (c.isArray()) {
+					c = c.getComponentType();
+				}
+			}
+			i++;
+		}
+		return member;
+	}
+
+	public Member getMemberOf(int index, Map<String, Object> args) {
+		return getMemberOf(index, getRootClass(), args);
 	}
 
 	/**
@@ -880,17 +916,18 @@ public class PathExpression implements Iterable<ExpressionNode> {
 	 * @param beginIndex the index of the begin node (inclusive)
 	 * @param endIndex the index of the end node (exclusive)
 	 * @return a another path expression
-	 * @throws IllegalArgumentException if the index range is invalid
+	 * @throws IndexOutOfBoundsException if the index range is invalid
+	 * @throws IllegalArgumentException if the endIndex is less or equal than the beginIndex
 	 */
 	public PathExpression subPath(int beginIndex, int endIndex) {
 		if ((beginIndex == 0) && (endIndex == NODES.size())) {
 			return this;
-		} else if (beginIndex < 0) {
-			throw new IllegalArgumentException("The beginIndex must be greater than or equal zero.");
-		} else if (endIndex <= beginIndex) {
+		}
+		checkRange("BeginIndex", beginIndex, false);
+		checkRange("EndIndex", endIndex, true);
+
+		if (endIndex <= beginIndex) {
 			throw new IllegalArgumentException("The endIndex must be greater than beginIndex.");
-		} else if (endIndex > NODES.size()) {
-			throw new IllegalArgumentException(format("The endIndex must be less than or equal to %s.", NODES.size()));
 		} else if ((endIndex - beginIndex) == 1) {
 			return compile(ROOT_CLASS, NODES.get(beginIndex).getName());
 		}
@@ -931,14 +968,45 @@ public class PathExpression implements Iterable<ExpressionNode> {
 		return compile(c, PATH_EXPRESSION);
 	}
 
+	/**
+	 * Returns a string that represents this path expression.
+	 * 
+	 * @return a string that represents this path expression
+	 */
 	@Override
 	public String toString() {
 		return PATH_EXPRESSION;
 	}
 
+	/**
+	 * Checks if this instance support the given root obj. A static path expression only support a root obj equal to the {@linkplain #ROOT_CLASS root class}
+	 *
+	 * @param rootObj the desired root obj
+	 * @param staticExpressionValue use true to indicates that this method is being called in a method that get/set a static value
+	 * @throws UnsupportedOperationException if this instance is a static path expression and the given staticExpressionValue argument is false
+	 * @throws IllegalArgumentException if the static path expression not support the given root obj
+	 */
 	private void checkIfSupport(Object rootObj, boolean staticExpressionValue) {
-		if (isStaticExpression() && ((!staticExpressionValue) || (rootObj != ROOT_CLASS))) {
-			throw new UnsupportedOperationException("The static path expression not accept rootObj.");
+		if (isStaticExpression()) {
+			if (!staticExpressionValue) {
+				throw new UnsupportedOperationException("The static path expression not support this operation. Use a static method equivalent.");
+			} else if (rootObj != ROOT_CLASS) {
+				throw new IllegalArgumentException(format("The static path expression only support the %s class as root obj.", ROOT_CLASS.getName()));
+			}
+		}
+	}
+
+	/**
+	 * Checks if the given index is less than zero or greater (or equal, if exclusive = false) than node amount + 1.
+	 *
+	 * @param indexName the index name that will be used in the exception message
+	 * @param index the desired index
+	 * @param exclusive use true to indicate that a given index equal than node amount + 1 is valid
+	 * @throws IndexOutOfBoundsException if the index is invalid
+	 */
+	private void checkRange(String indexName, int index, boolean exclusive) {
+		if ((index < 0) || (exclusive ? (index > NODES.size()) : (index >= NODES.size()))) {
+			throw new IndexOutOfBoundsException(format("%s: %d, Size: %d", indexName, index, NODES.size()));
 		}
 	}
 

@@ -67,30 +67,51 @@ public class PathExpressionTest {
 	@Test
 	public void testGetExpressionValueInStaticPath() {
 		PathExpression pathExpression = compile(Person.class, "ADDRESS.state");
+		String expectedMessage = "The static path expression not support this operation. Use a static method equivalent.";
 		try {
 			pathExpression.getExpressionValue(null);
 			fail();
 		} catch (UnsupportedOperationException ex) {
-			assertEquals("The static path expression not accept rootObj.", ex.getMessage());
+			assertEquals(expectedMessage, ex.getMessage());
 		}
 		try {
 			pathExpression.getExpressionValue(null, Collections.emptyMap());
 			fail();
 		} catch (UnsupportedOperationException ex) {
-			assertEquals("The static path expression not accept rootObj.", ex.getMessage());
+			assertEquals(expectedMessage, ex.getMessage());
 		}
 		try {
 			pathExpression.getExpressionValue(null, InstanceFactory.DEFAULT_FACTORY);
 			fail();
 		} catch (UnsupportedOperationException ex) {
-			assertEquals("The static path expression not accept rootObj.", ex.getMessage());
+			assertEquals(expectedMessage, ex.getMessage());
 		}
 		try {
 			pathExpression.getExpressionValue(null, null, null);
 			fail();
 		} catch (UnsupportedOperationException ex) {
-			assertEquals("The static path expression not accept rootObj.", ex.getMessage());
+			assertEquals(expectedMessage, ex.getMessage());
 		}
+	}
+
+	@Test
+	public void testGetMemberOf() throws Exception {
+		PathExpression pathExpression = PathExpression.compile("addresses[0].state");
+		try {
+			pathExpression.getMemberOf(-1, Person.class);
+			fail();
+		} catch (IndexOutOfBoundsException ex) {}
+		try {
+			pathExpression.getMemberOf(pathExpression.getNodesAmount(), Person.class);
+			fail();
+		} catch (IndexOutOfBoundsException ex) {}
+
+		Field addressesField = wrap(Person.class).getField("addresses");
+		assertEquals(addressesField, pathExpression.getMemberOf(0, Person.class));
+
+		Field stateField = wrap(Address.class).getField("state");
+		assertEquals(stateField, pathExpression.getMemberOf(1, Person.class));
+		assertEquals(stateField, pathExpression.getLastMember(Person.class));
 	}
 
 	@Test
@@ -150,29 +171,30 @@ public class PathExpressionTest {
 	@Test
 	public void testSetExpressionValueInStaticPath() {
 		PathExpression pathExpression = compile(Person.class, "ADDRESS.state");
+		String expectedMessage = "The static path expression not support this operation. Use a static method equivalent.";
 		try {
 			pathExpression.setExpressionValue(null, null);
 			fail();
 		} catch (UnsupportedOperationException ex) {
-			assertEquals("The static path expression not accept rootObj.", ex.getMessage());
+			assertEquals(expectedMessage, ex.getMessage());
 		}
 		try {
 			pathExpression.setExpressionValue(null, null, Collections.emptyMap());
 			fail();
 		} catch (UnsupportedOperationException ex) {
-			assertEquals("The static path expression not accept rootObj.", ex.getMessage());
+			assertEquals(expectedMessage, ex.getMessage());
 		}
 		try {
 			pathExpression.setExpressionValue(null, null, InstanceFactory.DEFAULT_FACTORY);
 			fail();
 		} catch (UnsupportedOperationException ex) {
-			assertEquals("The static path expression not accept rootObj.", ex.getMessage());
+			assertEquals(expectedMessage, ex.getMessage());
 		}
 		try {
 			pathExpression.setExpressionValue(null, null, null, null);
 			fail();
 		} catch (UnsupportedOperationException ex) {
-			assertEquals("The static path expression not accept rootObj.", ex.getMessage());
+			assertEquals(expectedMessage, ex.getMessage());
 		}
 	}
 
