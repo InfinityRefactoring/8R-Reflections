@@ -104,6 +104,37 @@ public class ClassWrapper<T> {
 	}
 
 	/**
+	 * Formats the given arguments as a method signature.
+	 *
+	 * @param returnType the return type
+	 * @param methodName the method name
+	 * @param parameterTypes the parameter types
+	 * @return a string with the method signature
+	 */
+	public static String formatAsMethodSignature(Class<?> returnType, String methodName, Class<?>... parameterTypes) {
+		return formatAsMethodSignature("", returnType, methodName, parameterTypes);
+	}
+
+	/**
+	 * Formats the given arguments as a method signature.
+	 *
+	 * @param modifiers the method modifiers
+	 * @param returnType the return type
+	 * @param methodName the method name
+	 * @param parameterTypes the parameter types
+	 * @return a string with the method signature
+	 */
+	public static String formatAsMethodSignature(String modifiers, Class<?> returnType, String methodName, Class<?>... parameterTypes) {
+		if (modifiers == null) {
+			modifiers = "";
+		}
+		if (methodName == null) {
+			throw new IllegalArgumentException("The method name cannot be null.");
+		}
+		return format("%s%s%s %s%s", modifiers, (modifiers.isEmpty() ? "" : " "), returnType.getName(), methodName, getTypesAsString(parameterTypes));
+	}
+
+	/**
 	 * Returns the field value.
 	 *
 	 * @param obj the instance that will have the field value extracted
@@ -123,7 +154,7 @@ public class ClassWrapper<T> {
 
 	/**
 	 * Returns the generic type of the given expected generic class and index defined on the return type.
-	 * 
+	 *
 	 * @param method the method that contains the generic type
 	 * @param expectedGenericClass the generic class/interface that will be used as comparison
 	 * @param index the index of the generic type
@@ -135,7 +166,7 @@ public class ClassWrapper<T> {
 
 	/**
 	 * Returns the generic type of the given expected generic class and index defined on the specified type.
-	 * 
+	 *
 	 * @param c the class that contains the generic type
 	 * @param expectedGenericClass the generic class/interface that will be used as comparison
 	 * @param index the index of the generic type
@@ -147,7 +178,7 @@ public class ClassWrapper<T> {
 
 	/**
 	 * Returns the generic type of the given expected generic class and index defined on the specified field.
-	 * 
+	 *
 	 * @param field the field that contains the generic type
 	 * @param expectedGenericClass the generic class/interface that will be used as comparison
 	 * @param index the index of the generic type
@@ -159,7 +190,7 @@ public class ClassWrapper<T> {
 
 	/**
 	 * Returns the generic type of the given expected generic class and index defined on the specified parameter.
-	 * 
+	 *
 	 * @param parameter the parameter that contains the generic type
 	 * @param expectedGenericClass the generic class/interface that will be used as comparison
 	 * @param index the index of the generic type
