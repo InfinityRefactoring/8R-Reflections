@@ -211,7 +211,7 @@ public class PathExpression implements Iterable<ExpressionNode> {
 		LAST_INDEX = (NODES.size() - 1);
 		NEED_ARGUMENTS = NODES.stream().anyMatch(ExpressionNode::needArguments);
 
-		if (isStaticExpression()) {
+		if (isStaticExpression() && (!needArguments())) {
 			try {
 				getLastMember();
 			} catch (IllegalArgumentException ex) {
@@ -970,7 +970,7 @@ public class PathExpression implements Iterable<ExpressionNode> {
 
 	/**
 	 * Returns a string that represents this path expression.
-	 * 
+	 *
 	 * @return a string that represents this path expression
 	 */
 	@Override
