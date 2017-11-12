@@ -381,16 +381,40 @@ public class PathExpression implements Iterable<ExpressionNode> {
 		return NODES.get(NODES.size() - 1);
 	}
 
+	/**
+	 * Returns the member that the given node index represents on the {@linkplain #getRootClass() root class}.
+	 *
+	 * @param index the node index (inclusive)
+	 * @return the member
+	 * @see #getMemberOf(int, Map)
+	 * @see #getMemberOf(int, Class)
+	 * @see #getLastMember()
+	 * @throws IndexOutOfBoundsException if the index is invalid
+	 * @throws IllegalArgumentException if the static path expression not support the given root obj
+	 */
 	public Member getMemberOf(int index) {
 		return getMemberOf(index, getRootClass(), null);
 	}
 
+	/**
+	 * Returns the member that the given node index represents on the given class.
+	 *
+	 * @param index the node index (inclusive)
+	 * @param c the class that have this node
+	 * @return the member
+	 * @see #getMemberOf(int)
+	 * @see #getMemberOf(int, Map)
+	 * @see #getLastMember(Class)
+	 * @throws IndexOutOfBoundsException if the index is invalid
+	 * @throws IllegalArgumentException if the static path expression not support the given root obj
+	 */
 	public Member getMemberOf(int index, Class<?> c) {
 		return getMemberOf(index, c, null);
 	}
 
 	/**
 	 * Returns the member that the given node index represents on the given class.
+	 *
 	 * @param index the node index (inclusive)
 	 * @param c the class that have this node
 	 * @param args the arguments that will be used to access this node.
@@ -401,7 +425,7 @@ public class PathExpression implements Iterable<ExpressionNode> {
 	 * @see #getLastMember(Class, Map)
 	 * @see #needArguments()
 	 * @throws IndexOutOfBoundsException if the index is invalid
-	 * @throws
+	 * @throws IllegalArgumentException if the static path expression not support the given root obj
 	 */
 	public Member getMemberOf(int index, Class<?> c, Map<String, Object> args) {
 		checkIfSupport(c, true);
@@ -424,6 +448,19 @@ public class PathExpression implements Iterable<ExpressionNode> {
 		return member;
 	}
 
+	/**
+	 * Returns the member that the given node index represents on the {@linkplain #getRootClass() root class}.
+	 *
+	 * @param index the node index (inclusive)
+	 * @param args the arguments that will be used to access this node.
+	 * @return the member
+	 * @see #getMemberOf(int)
+	 * @see #getMemberOf(int, Class)
+	 * @see #getLastMember(Map)
+	 * @see #needArguments()
+	 * @throws IndexOutOfBoundsException if the index is invalid
+	 * @throws IllegalArgumentException if the static path expression not support the given root obj
+	 */
 	public Member getMemberOf(int index, Map<String, Object> args) {
 		return getMemberOf(index, getRootClass(), args);
 	}
