@@ -95,6 +95,7 @@ public class PathExpressionTest {
 	}
 
 	@Test
+	@SuppressWarnings("unused")
 	public void testGetMemberOf() throws Exception {
 		PathExpression pathExpression = PathExpression.compile("addresses[0].state");
 		try {
