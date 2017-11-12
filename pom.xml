@@ -4,7 +4,7 @@
 
 	<groupId>com.infinityrefactoring</groupId>
 	<artifactId>8R-reflections</artifactId>
-	<version>1.5.0</version>
+	<version>2.0.0</version>
 	<packaging>jar</packaging>
 
 	<name>Reflections</name>
@@ -22,6 +22,8 @@
 			<name>Thomás Sousa Silva</name>
 			<email>thomas.sousa.96@gmail.com</email>
 			<url>https://github.com/ThomasSousa96</url>
+			<organization>InfinityRefactoring</organization>
+			<organizationUrl>https://infinityrefactoring.com</organizationUrl>
 		</developer>
 	</developers>
 
