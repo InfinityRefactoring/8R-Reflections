@@ -1,5 +1,7 @@
 # 8R-Reflections
 
+### Current version: 2.0.0
+
 ## What is it?
 
 An utility library for facilitate the handling of Class, Field, Method and others elements of the Java Reflection API.
@@ -24,7 +26,7 @@ Add this dependency in your pom.xml file:
 <dependency>
 	<groupId>com.infinityrefactoring</groupId>
 	<artifactId>8R-reflections</artifactId>
-	<version>1.5.0</version>
+	<version>2.0.0</version>
 </dependency>
 ```
 ## Use example:
@@ -34,6 +36,7 @@ This example show how you access the fields and methods of the Person and Addres
 ```
 public class Person {
 
+	public static String NAME_PREFIX = "[USER]";
 	private String name;
 	private Address[] addresses;
 
@@ -86,6 +89,15 @@ pathExpression.setExpressionValue(person, "PE");
 String state = pathExpression.getExpressionValue(person);
 System.out.println(state);
 ```
+Using static path expressions:
+
+```
+PathExpression pathExpression = PathExpression.compile("class(com.exanple.Person)NAME_PREFIX");
+pathExpression.setStaticExpressionValue("[PERSON]");
+String state = pathExpression.getStaticExpressionValue();
+System.out.println("state = " + state);	
+```
+
 
 Using various path expressions of single time:
 
